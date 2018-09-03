@@ -2,11 +2,14 @@ import os
 import time
 from itertools import zip_longest
 from multiprocessing.pool import Pool
+
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from openpyxl import load_workbook
 from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Font
 
 from link import Link
+from loader import ProgressBar_Dialog
 from sheet import ws_result, wb_result
 
 
@@ -31,7 +34,7 @@ def parse_row(column):
     return link
 
 
-def save_result_report(links):
+def save_result_report(fileName, links):
     ws_result.append([
         make_cell("Acceptor", bold=True),
         make_cell("Anchor", bold=True),
@@ -45,9 +48,9 @@ def save_result_report(links):
         if link:
             ws_result.append(link.get_array_cells())
 
-    filename = 'sheets/{}'.format(time.strftime("Report-%Y-%m-%d %H-%M-%S.xlsx"))
-    wb_result.save(filename)
-    #os.system("open " + filename)
+    backup_filename = 'sheets/{}'.format(time.strftime("Report-%Y-%m-%d %H-%M-%S.xlsx"))
+    wb_result.save(backup_filename)
+    wb_result.save(fileName)
 
 
 def make_cell(value, size=9, bold=False):
@@ -56,8 +59,8 @@ def make_cell(value, size=9, bold=False):
     return cell
 
 
-def check(filename=''):
-    threads = 16
+def check(filename='', progressBar=None):
+    threads = 8
     all_links = []
 
     wb = load_workbook(filename)
@@ -69,9 +72,10 @@ def check(filename=''):
             links = pool.map(parse_row, batch_rows, 1)
             all_links += links
             count += len(links)
-            print('Checked: ', count)
+            progress = count / ws.max_row * 100
+            progressBar.emit(progress)
 
-    save_result_report(all_links)
+    return all_links
 
 
 if __name__ == '__main__':

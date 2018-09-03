@@ -1,0 +1,13 @@
+QWidget#toolTipWindow {
+	border: 20px solid black;
+    border-top-left-radius: 40px;
+    border-top-right-radius: 40px;
+    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #484e55, stop: 0.6 #3a3f44, stop: 1 #313539);
+}
+QWidget#command {
+	color: #fff;
+	font-weight: bold;
+}
+QWidget#commandResult {
+	color: #fff;
+}

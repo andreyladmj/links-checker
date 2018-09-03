@@ -1,8 +1,10 @@
 import sys
+from time import strftime
+
 from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QLineEdit, QFileDialog
 from PyQt5.QtGui import QIcon
 
-from check_links import check
+from check_links import check, save_result_report
 
 
 class App(QWidget):
@@ -21,34 +23,39 @@ class App(QWidget):
         self.setGeometry(self.left, self.top, self.width, self.height)
 
         self.openFileNameDialog()
-        #self.openFileNamesDialog()
-        #self.saveFileDialog()
+        # self.openFileNamesDialog()
+        # self.saveFileDialog()
 
-        #self.show()
+        # self.show()
 
     def openFileNameDialog(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
+        fileName, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "",
+                                                  "All Files (*);;Python Files (*.py)", options=options)
         if fileName:
-            print(fileName)
-            check(fileName)
+            links = check(fileName)
+            self.saveFileDialog(links)
 
     def openFileNamesDialog(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        files, _ = QFileDialog.getOpenFileNames(self,"QFileDialog.getOpenFileNames()", "","All Files (*);;Python Files (*.py)", options=options)
+        files, _ = QFileDialog.getOpenFileNames(self, "QFileDialog.getOpenFileNames()", "",
+                                                "All Files (*);;Python Files (*.py)", options=options)
         if files:
             print(files)
 
-    def saveFileDialog(self):
+    def saveFileDialog(self, links):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","All Files (*);;Text Files (*.txt)", options=options)
+        fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", strftime("Report-%Y-%m-%d %H-%M-%S.xlsx"),
+                                                  "All Files (*);;Text Files (*.txt)", options=options)
         if fileName:
-            print(fileName)
+            save_result_report(links)
+
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = App()
-    sys.exit(app.exec_())
+    sys.exit(1)# app.exec_()

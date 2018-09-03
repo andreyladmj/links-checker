@@ -1,0 +1,16 @@
+QWidget#Window {
+	border: 20px solid black;
+	border-radius: 20px;
+	background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #484e55, stop: 0.6 #3a3f44, stop: 1 #313539);
+}
+QWidget#commandBox {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.42857143;
+    color: #c8c8c8;
+    background-color: #272b30;
+    border-radius: 10px;
+}
+QWidget#inputCommand {
+    color: #484e55;
+}
