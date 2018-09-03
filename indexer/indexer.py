@@ -1,45 +1,65 @@
-import requests,time
-from random import randint
+from multiprocessing.pool import Pool
+from random import shuffle
 
-with open('1.txt','r') as f:
-   lines = f.readlines()
-   for i in lines: #÷икл дл¤ выемки строк
-       i.rstrip() #Cрез разделител¤ новой строки
-       split_i=i.split(';') #—резаем по знаку ; получаем массив трЄх значений
+import grequests
+import os
 
+from check_links import iterate_by_batch
 
-       how_many_queries=split_i[2].rstrip()
-       how_many_queries_int=int(how_many_queries)
-       what_is_my_domain=split_i[1].rstrip()
-       whats_domain_to_spam=split_i[0].rstrip()
+def get_links():
+    urls = []
+    with open('statistic-lab.txt', 'r') as file:
+        for line in file.readlines():
+            components = line.split(';')
+            domain = components[0]
+            site = components[1]
+            count = int(components[2].rstrip())
 
-       print('Start to Spam -> '+whats_domain_to_spam)
-       print('By Reffer -> '+what_is_my_domain)
-       print(how_many_queries+' Queries')
+            urls += [(domain, site)] * count
 
-
-       domain = what_is_my_domain
-       my_domain = whats_domain_to_spam
-       how_many = how_many_queries_int-1
-       counter = 0
+    shuffle(urls)
+    return urls
 
 
-       while counter <= how_many:
-           try:
+def exception_handler(request, exception):
+    print('Exception', request.url, exception)
 
-               s = requests.Session()
-               s.headers.update({'referer': domain,
-                             'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'})
-               s.get(my_domain)
-               counter += 1
-           #сегмент задержки
-           #delay = randint(0, 9) / 10
+def do_something(response, **kwargs):
+    #  'apparent_encoding', 'close', 'connection', 'content', 'cookies', 'elapsed', 'encoding', 'headers', 'history', 'is_permanent_redirect', 'is_redirect', 'iter_content', 'iter_lines', 'json', 'links', 'next', 'ok', 'raise_for_status', 'raw', 'reason', 'request', 'status_code', 'text', 'url'
+    print('GET', response.url, response.status_code, kwargs)
 
-           #time.sleep(delay)
+def get_urls(links):
+    print(os.getpid(), len(links))
+    chunk_count = 0
+    chinking = 200
 
-           #print('query #', counter,'with ', delay, 'sec. delay')
-               print('query #', counter)
+    chunking = iterate_by_batch(links, chinking, None)
 
-           except Exception:
-               counter+=1999
-               print("Time Out Error or some Exception")
+    for chunk in chunking:
+        chunk_count += 1
+        print(os.getpid(), 'Chunk: ', chunk_count, 'of', len(links) / chinking)
+        results = []
+
+        for link_pair in chunk:
+            domain = link_pair[0]
+            url = link_pair[1]
+            headers = {'referer': domain, 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'}
+            results.append(grequests.get(url, headers=headers, hooks = {'response' : do_something}))
+
+        grequests.map(results, exception_handler=exception_handler)
+
+        print('results', results)
+
+def run():
+    links = get_links()
+    batch_size = len(links) // os.cpu_count() + 1
+    print('Links: {}, Batch Size: {}'.format(len(links), batch_size))
+
+    batches = iterate_by_batch(links, batch_size, None)
+
+    with Pool(processes=os.cpu_count()) as pool:
+        res = pool.map(get_urls, batches, 1)
+
+
+if __name__ == '__main__':
+    run()

@@ -25,7 +25,7 @@ class App(QWidget):
 
         self.button = QPushButton('Choose xlsx report', self)
         self.button.setToolTip('Parse xlsx file')
-        self.button.move(100, 70)
+        self.button.move(200, 170)
         self.button.clicked.connect(self.on_click)
 
         self.progressLabel = QLabel('Progress Bar:', self)

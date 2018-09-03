@@ -1,9 +1,10 @@
 import os
 import time
 from itertools import zip_longest
+# from multiprocessing.pool import Pool
+from multiprocessing.dummy import Pool
 
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
-from envs.untitled.Lib.multiprocessing.dummy import Pool
 from openpyxl import load_workbook
 from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Font
@@ -18,7 +19,12 @@ def iterate_by_batch(array_list, amount, fillvalue=None):
     return zip_longest(*args, fillvalue=fillvalue)
 
 
+def parse_rows(rows):
+    for row in rows:
+        parse_row(row)
+
 def parse_row(column):
+    print('column', column)
     if not column:
         return None
 
@@ -67,13 +73,22 @@ def check(filename='', progressBar=None):
     ws = wb.active
     count = 0
 
+
+    rows = list(ws.iter_rows())
+    batch_size = len(rows) // os.cpu_count() + 1
+
+    batches = iterate_by_batch(rows, batch_size, None)
+
+
     with Pool(processes=os.cpu_count()) as pool:
-        for batch_rows in iterate_by_batch(ws.iter_rows(), threads, None):
-            links = pool.map(parse_row, batch_rows, 1)
-            all_links += links
-            count += len(links)
-            progress = count / ws.max_row * 100
-            progressBar.emit(progress)
+        #for batch_rows in iterate_by_batch(ws.iter_rows(), threads, None):
+        links = pool.map(parse_rows, batches, 1)
+        print('links', links)
+        all_links += links
+        count += len(links)
+        print(count)
+        progress = count / ws.max_row * 100
+        progressBar.emit(progress)
 
     return all_links
 
