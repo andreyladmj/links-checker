@@ -57,7 +57,7 @@ def get_urls(links):
 
         grequests.map(results, exception_handler=exception_handler, size=16, gtimeout=12)
 
-        print('Finished: ', os.getpid())
+    print('Finished: ', os.getpid())
 
 
 def run():

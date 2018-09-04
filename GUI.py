@@ -5,7 +5,7 @@ from PyQt5 import QtCore
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QProgressBar, QLabel, QHBoxLayout, QFileDialog
 from PyQt5.QtCore import pyqtSlot
 
-from check_links import check, save_result_report
+from check_links import save_result_report, check_links_in_the_workbook
 
 
 class App(QWidget):
@@ -81,7 +81,7 @@ class ParseXLSX(QtCore.QThread):
 
     def run(self):
         self.pbar_signal.emit(0)
-        links = check(self.fileName, self.pbar_signal)
+        links = check_links_in_the_workbook(self.fileName, self.pbar_signal, multi=False)
 
         self.pbar_signal.emit(100)
         self.download_signal.emit(links)

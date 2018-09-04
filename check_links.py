@@ -1,37 +1,15 @@
 import os
 import time
-from itertools import zip_longest
-from multiprocessing.dummy import Pool
+from multiprocessing.pool import Pool
 
+import grequests
 from openpyxl import load_workbook
 from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Font
 
-from link_old import Link
-from loader import ProgressBar_Dialog
-from sheet import ws_result, wb_result
-
-
-def iterate_by_batch(array_list, amount, fillvalue=None):
-    args = [iter(array_list)] * amount
-    return zip_longest(*args, fillvalue=fillvalue)
-
-
-def parse_row(column):
-    if not column:
-        return None
-
-    acceptor = column[0].value
-    anchor = column[1].value
-    donor = column[2].value
-
-    if 'http' not in acceptor: return False
-    if 'http' not in donor: return False
-
-    link = Link(acceptor, anchor, donor)
-    link.check()
-
-    return link
+from utils.link import Link
+from utils.sheet import ws_result, wb_result
+from utils.utils import iterate_by_batch
 
 
 def save_result_report(fileName, links):
@@ -59,37 +37,100 @@ def make_cell(value, size=9, bold=False):
     return cell
 
 
-def check(filename='', progressBar=None, multi=True):
-    threads = 8
-    all_links = []
+def exception_handler(request, exception):
+    print('Exception', request, request.url, exception)
 
+
+def check_acceptor_decorator(acceptor, anchor, donor):
+    def check_acceptor(response, *args, **kwargs):
+        print('GET', response.url, 'Status:', response.status_code, end=', ')
+
+        # if response.status_code == 301:
+        #     print('redirected to', response.headers.get('Location'), end=', kwargs:')
+        # print(dir(response))
+
+        link = Link(acceptor, anchor, donor)
+        link.check(response.text, response.status_code)
+
+        print('acceptor: ', acceptor in response.text, end=', ')
+        print('anchor: ', anchor in response.text)
+        response.link = link
+
+        return response
+
+    return check_acceptor
+
+
+def check_url(rows, progressBar=None):
+    print('Process', os.getpid(), 'Count of links', len(rows))
+    chunk_size = 16
+    chunk_count = 0
+    chunk_results = []
+    total_chunks_count = len(rows) / chunk_size
+
+    chunks = iterate_by_batch(rows, chunk_size, None)
+
+    print('Process', os.getpid(), 'Approximately Count of chunks', total_chunks_count)
+
+    for chunk in chunks:
+        chunk_count += 1
+        print('Process', os.getpid(), 'Approximately Chunk: ', chunk_count, 'of', total_chunks_count)
+        results = []
+
+        for link in chunk:
+            if not link:
+                continue
+
+            acceptor = link[0].value
+            anchor = link[1].value
+            donor = link[2].value
+
+            if not acceptor or not donor or 'http' not in acceptor or 'http' not in donor: continue
+
+            headers = {
+                'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36'}
+            results.append(grequests.get(donor, headers=headers,
+                                         hooks={'response': check_acceptor_decorator(acceptor, anchor, donor)}))
+
+        results = grequests.map(results, exception_handler=exception_handler, size=16, gtimeout=12)
+
+        if progressBar:
+            progressBar.emit(chunk_count / total_chunks_count * 100)
+
+        for result in results:
+            if result != None:
+                chunk_results.append(result.link)
+
+    print('Finished: ', os.getpid())
+
+    return chunk_results
+
+
+def check_links_in_the_workbook(filename, progressBar=None, multi=True):
+    print('CPU count:', os.cpu_count())
     wb = load_workbook(filename)
     ws = wb.active
-    count = 0
+
+    links = list(ws.iter_rows())
+
+    batch_size = len(links) // os.cpu_count() + 1
+    print('Total Links Count: {}, Batch Size: {}'.format(len(links), batch_size))
 
     if multi:
+        batches = iterate_by_batch(links, batch_size, None)
+
         with Pool(processes=os.cpu_count()) as pool:
-            for batch_rows in iterate_by_batch(ws.iter_rows(), threads, None):
-                links = pool.map(parse_row, batch_rows, 1)
-                all_links += links
-                count += len(links)
-                progress = count / ws.max_row * 100
+            pool_result = pool.map(check_url, batches, 1)
 
-                if progressBar:
-                    progressBar.emit(progress)
-
+        result = []
+        for r in pool_result:
+            result += r
     else:
-        for row in ws.iter_rows():
-            parse_row(row)
-            count += 1
-            progress = count / ws.max_row * 100
+        result = check_url(links, progressBar)
 
-            if progressBar:
-                progressBar.emit(progress)
-
-    return all_links
+    return result
 
 
 if __name__ == '__main__':
-    links = check('college_papers_for_sale.xlsx')
-    save_result_report('college_papers_for_sale_checked.xlsx', links)
+    links = check_links_in_the_workbook('acceptor_links.xlsx')
+    save_result_report('acceptor_links_report.xlsx', links)

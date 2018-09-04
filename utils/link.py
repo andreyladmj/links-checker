@@ -3,7 +3,7 @@ from openpyxl.cell import WriteOnlyCell
 from openpyxl.comments import Comment
 from openpyxl.styles import Font, PatternFill
 
-from sheet import ws_result
+from utils.sheet import ws_result
 
 
 class Link:
@@ -16,12 +16,11 @@ class Link:
         self.url_status = 0
         self.font = 'Verdana'
 
-    def check(self):
-        page = requests.get(self.donor)
-        self.has_anchor = self.anchor in page.text
-        self.has_donor = self.acceptor in page.text
-        self.url_status = page.status_code
-        print('Check', self.acceptor, page.status_code)
+    def check(self, text, status_code):
+        self.has_anchor = self.anchor in text
+        self.has_donor = self.acceptor in text
+        self.url_status = status_code
+        # print('Check', self.acceptor, status_code)
 
     def get_array_cells(self):
         acceptor_cell = WriteOnlyCell(ws_result, value=self.acceptor)
