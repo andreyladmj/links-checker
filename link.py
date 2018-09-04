@@ -21,6 +21,7 @@ class Link:
         self.has_anchor = self.anchor in page.text
         self.has_donor = self.donor in page.text
         self.url_status = page.status_code
+        print('Check', self.acceptor, page.status_code)
 
     def get_array_cells(self):
         acceptor_cell = WriteOnlyCell(ws_result, value=self.acceptor)

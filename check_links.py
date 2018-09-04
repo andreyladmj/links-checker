@@ -59,7 +59,7 @@ def make_cell(value, size=9, bold=False):
     return cell
 
 
-def check(filename='', progressBar=None):
+def check(filename='', progressBar=None, multi=True):
     threads = 8
     all_links = []
 
@@ -67,11 +67,19 @@ def check(filename='', progressBar=None):
     ws = wb.active
     count = 0
 
-    with Pool(processes=os.cpu_count()) as pool:
-        for batch_rows in iterate_by_batch(ws.iter_rows(), threads, None):
-            links = pool.map(parse_row, batch_rows, 1)
-            all_links += links
-            count += len(links)
+    if multi:
+        with Pool(processes=os.cpu_count()) as pool:
+            for batch_rows in iterate_by_batch(ws.iter_rows(), threads, None):
+                links = pool.map(parse_row, batch_rows, 1)
+                all_links += links
+                count += len(links)
+                progress = count / ws.max_row * 100
+                progressBar.emit(progress)
+
+    else:
+        for row in ws.iter_rows():
+            parse_row(row)
+            count += 1
             progress = count / ws.max_row * 100
             progressBar.emit(progress)
 

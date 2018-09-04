@@ -80,7 +80,7 @@ class ParseXLSX(QtCore.QThread):
 
     def run(self):
         self.pbar_signal.emit(0)
-        links = check(self.fileName, self.pbar_signal)
+        links = check(self.fileName, self.pbar_signal, multi=False)
 
         self.pbar_signal.emit(100)
         self.download_signal.emit(links)
