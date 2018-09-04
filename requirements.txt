@@ -1,2 +1,4 @@
 openpyxl
 pillow
+grequests
+openpyxl

@@ -1,9 +1,8 @@
 import os
 import time
 from itertools import zip_longest
+from multiprocessing.dummy import Pool
 
-from PyQt5.QtCore import pyqtSignal, pyqtSlot
-from envs.untitled.Lib.multiprocessing.dummy import Pool
 from openpyxl import load_workbook
 from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Font
@@ -74,14 +73,18 @@ def check(filename='', progressBar=None, multi=True):
                 all_links += links
                 count += len(links)
                 progress = count / ws.max_row * 100
-                progressBar.emit(progress)
+
+                if progressBar:
+                    progressBar.emit(progress)
 
     else:
         for row in ws.iter_rows():
             parse_row(row)
             count += 1
             progress = count / ws.max_row * 100
-            progressBar.emit(progress)
+
+            if progressBar:
+                progressBar.emit(progress)
 
     return all_links
 
