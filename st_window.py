@@ -28,7 +28,7 @@ class App(QWidget):
         self.button.move(200, 170)
         self.button.clicked.connect(self.on_click)
 
-        self.progressLabel = QLabel('Progress Bar:', self)
+        self.progressLabel = QLabel('Progress:', self)
         self.progressBar = QProgressBar(self)
         self.progressBar.setMaximum(100)
         self.progressBar.setMinimum(0)
@@ -63,6 +63,7 @@ class App(QWidget):
                                                   strftime("Report-%Y-%m-%d %H-%M-%S.xlsx"),
                                                   "All Files (*);;Text Files (*.txt)", options=options)
         if fileName:
+            print('Save to', fileName)
             save_result_report(fileName, links)
 
     @pyqtSlot()

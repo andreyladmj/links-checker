@@ -27,17 +27,16 @@ def exception_handler(request, exception):
 
 
 def do_something(response, **kwargs):
-    #  'apparent_encoding', 'close', 'connection', 'content', 'cookies', 'elapsed', 'encoding', 'headers', 'history', 'is_permanent_redirect', 'is_redirect', 'iter_content', 'iter_lines', 'json', 'links', 'next', 'ok', 'raise_for_status', 'raw', 'reason', 'request', 'status_code', 'text', 'url'
     print('GET', response.url, 'Status:', response.status_code, end=', ')
 
     if response.status_code == 301:
-        print('redirected to', response.headers.get('Location'), end=', kwargs:')
+        print('redirected to', response.headers.get('Location'), end=', kwargs: ')
 
     print(kwargs)
 
 
 def get_urls(links):
-    print(os.getpid(), len(links))
+    print('Process', os.getpid(), 'got links:', len(links))
     chunk_count = 0
     chinking = 200
 
@@ -56,7 +55,7 @@ def get_urls(links):
                            'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'}
                 results.append(grequests.get(url, headers=headers, hooks={'response': do_something}))
 
-        grequests.map(results, exception_handler=exception_handler)
+        grequests.map(results, exception_handler=exception_handler, size=16, gtimeout=12)
 
         print('Finished: ', os.getpid())
 

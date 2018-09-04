@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Font
 
-from link import Link
+from link_old import Link
 from loader import ProgressBar_Dialog
 from sheet import ws_result, wb_result
 
@@ -26,6 +26,7 @@ def parse_row(column):
     donor = column[2].value
 
     if 'http' not in acceptor: return False
+    if 'http' not in donor: return False
 
     link = Link(acceptor, anchor, donor)
     link.check()
@@ -39,7 +40,7 @@ def save_result_report(fileName, links):
         make_cell("Anchor", bold=True),
         make_cell("Donor", bold=True),
         make_cell("Has Anchor", bold=True),
-        make_cell("Has Donor", bold=True),
+        make_cell("Has Acceptor", bold=True),
         make_cell("Site Status", bold=True),
     ])
 
@@ -48,7 +49,7 @@ def save_result_report(fileName, links):
             ws_result.append(link.get_array_cells())
 
     backup_filename = 'sheets/{}'.format(time.strftime("Report-%Y-%m-%d %H-%M-%S.xlsx"))
-    wb_result.save(backup_filename)
+    # wb_result.save(backup_filename)
     wb_result.save(fileName)
 
 
@@ -90,4 +91,5 @@ def check(filename='', progressBar=None, multi=True):
 
 
 if __name__ == '__main__':
-    check('college_papers_for_sale.xlsx')
+    links = check('college_papers_for_sale.xlsx')
+    save_result_report('college_papers_for_sale_checked.xlsx', links)
