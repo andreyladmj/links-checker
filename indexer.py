@@ -1,6 +1,8 @@
+from datetime import timedelta
 from multiprocessing.pool import Pool
 from os.path import dirname, join
 from random import shuffle
+from time import time
 
 import grequests
 import os
@@ -63,6 +65,7 @@ def get_urls(links):
 
 
 def run():
+    start_time = time()
     links = get_links()
     batch_size = len(links) // os.cpu_count() + 1
     print('Links: {}, Batch Size: {}'.format(len(links), batch_size))
@@ -71,6 +74,8 @@ def run():
 
     with Pool(processes=os.cpu_count()) as pool:
         res = pool.map(get_urls, batches, 1)
+
+    print('Total execution time:', str(timedelta(seconds=(time() - start_time))))
 
 
 if __name__ == '__main__':
