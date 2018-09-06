@@ -18,10 +18,14 @@ def type_to_field_name(browser, name, message):
     comment.send_keys(message)
 
 
+# try to find by form
+
 if __name__ == '__main__':
-    url = 'http://ryanbradley.com/blog/service-area-businesses-gmb-schema-setup'
+    # url = 'http://ryanbradley.com/blog/service-area-businesses-gmb-schema-setup'
     # url = 'https://barn2.co.uk/wordpress-comments-page-post-widget/'
     # url = 'https://colorlib.com/wp/free-resume-templates/'
+    url = 'https://embedds.com/gadgets-that-can-help-you-with-training-your-body/'
+    # url = 'http://thegameofthrones.co/september-2017-printable-calendar-templates/'
     browser = create_webdriver()
     browser.get(url)
 

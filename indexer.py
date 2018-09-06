@@ -1,4 +1,5 @@
 from multiprocessing.pool import Pool
+from os.path import dirname, join
 from random import shuffle
 
 import grequests
@@ -9,7 +10,7 @@ from check_links import iterate_by_batch
 
 def get_links():
     urls = []
-    with open('statistic-lab.txt', 'r') as file:
+    with open(join(dirname(__file__), 'statistic-lab.txt'), 'r') as file:
         for line in file.readlines():
             components = line.split(';')
             domain = components[0]
@@ -26,13 +27,14 @@ def exception_handler(request, exception):
     print('Exception', request.url, exception)
 
 
-def do_something(response, **kwargs):
+def check_site_response(response, **kwargs):
     print('GET', response.url, 'Status:', response.status_code, end=', ')
 
     if response.status_code == 301:
-        print('redirected to', response.headers.get('Location'), end=', kwargs: ')
+        print('redirected to', response.headers.get('Location'), end=', ')
 
-    print(kwargs)
+    # print('kwargs:', kwargs)
+    print('')
 
 
 def get_urls(links):
@@ -53,7 +55,7 @@ def get_urls(links):
                 url = link_pair[1]
                 headers = {'referer': domain,
                            'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'}
-                results.append(grequests.get(url, headers=headers, hooks={'response': do_something}))
+                results.append(grequests.get(url, headers=headers, hooks={'response': check_site_response}))
 
         grequests.map(results, exception_handler=exception_handler, size=16, gtimeout=12)
 

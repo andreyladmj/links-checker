@@ -133,4 +133,8 @@ def check_links_in_the_workbook(filename, progressBar=None, multi=True):
 
 if __name__ == '__main__':
     links = check_links_in_the_workbook('acceptor_links.xlsx')
+    # links = check_links_in_the_workbook('examples/buy_cheap_essay (1).xlsx')
+    # links = check_links_in_the_workbook('examples/college_papers_for_sale.xlsx')
+    # links = check_links_in_the_workbook('examples/write_my_paper.xlsx')
+    # links = check_links_in_the_workbook('examples/write_my_paper_for_me_cheap_essays_pay_for_papers (3).xlsx')
     save_result_report('acceptor_links_report.xlsx', links)
