@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QProgressBar, QL
 from PyQt5.QtCore import pyqtSlot
 
 from utils.file_select import FileSelect
+from widgets.link_checker import NewDialog
 
 
 class App(QWidget, FileSelect):
@@ -56,7 +57,10 @@ class App(QWidget, FileSelect):
         layout.setColumnStretch(1, 4)
         layout.setColumnStretch(2, 4)
 
-        layout.addWidget(QPushButton('1'),0,0)
+        self.nd = QPushButton('New Window', self)
+        self.nd.clicked.connect(self.open_new_dialog)
+
+        layout.addWidget(self.nd,0,0)
         layout.addWidget(QPushButton('2'),0,1)
         layout.addWidget(QPushButton('3'),0,2)
         layout.addWidget(QPushButton('4'),1,0)
@@ -67,6 +71,10 @@ class App(QWidget, FileSelect):
         layout.addWidget(QPushButton('9'),2,2)
 
         self.horizontalGroupBox.setLayout(layout)
+
+    def open_new_dialog(self):
+        self.nd = NewDialog(self)
+        self.nd.show()
 
     @pyqtSlot()
     def on_click(self):
