@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QProgressBar, QL
 from PyQt5.QtCore import pyqtSlot
 
 from utils.file_select import FileSelect
-from widgets.link_checker import NewDialog
+from widgets.link_checker import CheckAcceptors
 
 
 class App(QWidget, FileSelect):
@@ -73,7 +73,7 @@ class App(QWidget, FileSelect):
         self.horizontalGroupBox.setLayout(layout)
 
     def open_new_dialog(self):
-        self.nd = NewDialog(self)
+        self.nd = CheckAcceptors(self)
         self.nd.show()
 
     @pyqtSlot()
