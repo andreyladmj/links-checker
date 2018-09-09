@@ -93,3 +93,4 @@ class CheckAcceptors(QWidget, FileSelect):
 
         for process, batch in zip(self.processes_list, batches):
             process.set_links(batch)
+            process.start()

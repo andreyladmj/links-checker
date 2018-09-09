@@ -57,10 +57,10 @@ class App(QWidget, FileSelect):
         layout.setColumnStretch(1, 4)
         layout.setColumnStretch(2, 4)
 
-        self.nd = QPushButton('New Window', self)
-        self.nd.clicked.connect(self.open_new_dialog)
+        self.check_acceptors = QPushButton('Check Acceptors', self)
+        self.check_acceptors.clicked.connect(self.open_new_dialog)
 
-        layout.addWidget(self.nd,0,0)
+        layout.addWidget(self.check_acceptors,0,0)
         layout.addWidget(QPushButton('2'),0,1)
         layout.addWidget(QPushButton('3'),0,2)
         layout.addWidget(QPushButton('4'),1,0)
@@ -73,8 +73,8 @@ class App(QWidget, FileSelect):
         self.horizontalGroupBox.setLayout(layout)
 
     def open_new_dialog(self):
-        self.nd = CheckAcceptors(self)
-        self.nd.show()
+        self.check_acceptors = CheckAcceptors(self)
+        self.check_acceptors.show()
 
     @pyqtSlot()
     def on_click(self):

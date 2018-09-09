@@ -1,8 +1,12 @@
 import time
+
+import grequests
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QProgressBar
 
 from check_links import save_result_report, check_links_in_the_workbook
+from utils.link import Link
+
 
 class ParseXLSX(QtCore.QThread):
     pbar_signal = QtCore.pyqtSignal(int)
@@ -31,14 +35,38 @@ class ParseXLSX(QtCore.QThread):
         self.pbar_signal.emit(self.processed / self.total * 100)
 
     def run(self):
-        for i in range(100):
-            self.processed += 1
-            self.info()
-            time.sleep(1)
+        results = []
 
-        pass
+        for link in self.links:
+            if not link: continue
+
+            acceptor = link[0].value
+            anchor = link[1].value
+            donor = link[2].value
+
+            if not acceptor or not donor or 'http' not in acceptor or 'http' not in donor: continue
+
+            headers = {
+                'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36'}
+            results.append(grequests.get(donor, headers=headers,
+                                         hooks={'response': self.check_acceptor_decorator(acceptor, anchor, donor)}))
+
+        results = grequests.map(results, exception_handler=self.exception_handler, size=16, gtimeout=12)
+
         # self.pbar_signal.emit(0)
         # links = check_links_in_the_workbook(self.fileName, self.pbar_signal, multi=False)
         #
         # self.pbar_signal.emit(100)
         # self.download_signal.emit(links)
+
+    def check_acceptor_decorator(self, acceptor, anchor, donor):
+        def check_acceptor(response, *args, **kwargs):
+            link = Link(acceptor, anchor, donor)
+            link.check(response.text, response.status_code)
+            response.link = link
+            return response
+
+        return check_acceptor
+
+    def exception_handler(self):
+        pass
