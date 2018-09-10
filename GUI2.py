@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QProgressBar, QL
 from PyQt5.QtCore import pyqtSlot
 
 from utils.file_select import FileSelect
+from widgets.indexer import Indexer
 from widgets.link_checker import CheckAcceptors
 
 
@@ -62,8 +63,11 @@ class App(QWidget, FileSelect):
         self.check_acceptors = QPushButton('Check Acceptors', self)
         self.check_acceptors.clicked.connect(self.open_new_dialog)
 
+        self.indexer = QPushButton('Run Indexer', self)
+        self.indexer.clicked.connect(self.open_indexer_window)
+
         layout.addWidget(self.check_acceptors,0,0)
-        layout.addWidget(QPushButton('2'),0,1)
+        layout.addWidget(self.indexer,0,1)
         layout.addWidget(QPushButton('3'),0,2)
         layout.addWidget(QPushButton('4'),1,0)
         layout.addWidget(QPushButton('5'),1,1)
@@ -77,6 +81,10 @@ class App(QWidget, FileSelect):
     def open_new_dialog(self):
         self.check_acceptors = CheckAcceptors(self)
         self.check_acceptors.show()
+
+    def open_indexer_window(self):
+        self.indexer_window = Indexer(self)
+        self.indexer_window.show()
 
     @pyqtSlot()
     def on_click(self):
