@@ -12,13 +12,13 @@ class Link:
         self.anchor = anchor
         self.donor = donor
         self.has_anchor = False
-        self.has_donor = False
+        self.has_acceptor = False
         self.url_status = 0
         self.font = 'Verdana'
 
     def check(self, text, status_code):
         self.has_anchor = self.anchor in text
-        self.has_donor = self.acceptor in text
+        self.has_acceptor = self.acceptor in text
         self.url_status = status_code
         # print('Check', self.acceptor, status_code)
 
@@ -32,7 +32,7 @@ class Link:
                                                                                   end_color='FFfcf8e3',
                                                                                   fill_type='solid')
 
-        if not self.has_donor:
+        if not self.has_acceptor:
             acceptor_cell.fill = anchor_cell.fill = donor_cell.fill = PatternFill(start_color='FFf2dede',
                                                                                   end_color='FFf2dede',
                                                                                   fill_type='solid')
@@ -66,7 +66,7 @@ class Link:
     def get_donor_cell(self):
         size = 9
 
-        if self.has_donor:
+        if self.has_acceptor:
             cell = WriteOnlyCell(ws_result, value='OK')
             cell.fill = PatternFill(start_color='FFdff0d8', end_color='FFdff0d8', fill_type='solid')
             cell.font = Font(name=self.font, size=size, color='3c763d', bold=True)

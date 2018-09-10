@@ -1,8 +1,9 @@
+from multiprocessing import Queue
 from os import cpu_count
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QProgressBar, QLabel, QHBoxLayout, QFileDialog, \
-    QVBoxLayout, QGroupBox, QGridLayout
+    QVBoxLayout, QGroupBox, QGridLayout, QScrollBar, QTextEdit
 from openpyxl import load_workbook
 
 from utils.file_select import FileSelect
@@ -11,6 +12,7 @@ from utils.utils import iterate_by_batch
 
 
 class CheckAcceptors(QWidget, FileSelect):
+
     def __init__(self, parent):
         super().__init__()
         self.title = 'Acceptor Checker'
@@ -21,11 +23,15 @@ class CheckAcceptors(QWidget, FileSelect):
         self.parent = parent
         self.processes = cpu_count()
         self.processes_list = []
+        self.queue = Queue()
+        self.logs = ""
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
+        # self.setFixedSize(self.width, self.height)
+        # self.setMaximumWidth(self.width)
 
         self.horizontalGroupBox = QGroupBox("Grid")
 
@@ -36,7 +42,7 @@ class CheckAcceptors(QWidget, FileSelect):
         actions_layout.setColumnStretch(1, 3)
         actions_layout.addWidget(self.select_xlsx,0,0)
         actions_layout.addWidget(QPushButton('Export Logs'),0,1)
-        actions_layout.addWidget(QPushButton('3'),0,2)
+        actions_layout.addWidget(QPushButton('Export XLSX Report'),0,2)
 
         vbox_layuot = QVBoxLayout()
 
@@ -51,11 +57,18 @@ class CheckAcceptors(QWidget, FileSelect):
 
         actions_layout.addLayout(vbox_layuot, 1, 0, 1, 2)
 
-        self.logs = ""
-
         cols = 3
-        rows = 2
-        self.qlabel_logs = QLabel(self.logs, self)
+        rows = 4
+
+        self.qlabel_logs = QTextEdit(self.logs, self)
+        # self.qlabel_logs.scr
+        # self.YScrollBar = QScrollBar(Qt.Vertical, self)
+        # self.XScrollBar = QScrollBar(Qt.Horizontal, self)
+        # self.qlabel_logs.setVerticalScrollBar(self.YScrollBar)
+        # self.qlabel_logs.setHorizontalScrollBar(self.XScrollBar)
+
+        # self.qlabel_logs.setMaximumWidth(self.width)
+        self.qlabel_logs.setLineWrapMode(QTextEdit.NoWrap)
         actions_layout.addWidget(self.qlabel_logs, 2,0, rows,cols)
         actions_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
 
@@ -77,8 +90,6 @@ class CheckAcceptors(QWidget, FileSelect):
         if file:
             self.log("Selected file {}".format(file))
             self.parse_xlsx_file(file)
-        else:
-            print('No file')
 
     def parse_xlsx_file(self, file):
         wb = load_workbook(file)
@@ -93,4 +104,5 @@ class CheckAcceptors(QWidget, FileSelect):
 
         for process, batch in zip(self.processes_list, batches):
             process.set_links(batch)
+            process.set_queue(self.queue)
             process.start()

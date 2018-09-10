@@ -23,6 +23,7 @@ class App(QWidget, FileSelect):
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
+        # self.setMaximumWidth(1024)
 
         # self.button = QPushButton('Choose xlsx report', self)
         # self.button.setToolTip('Parse xlsx file')
@@ -50,6 +51,7 @@ class App(QWidget, FileSelect):
         self.setLayout(windowLayout)
 
         self.show()
+        #self.setFixedWidth(1024)
 
     def createGridLayout(self):
         self.horizontalGroupBox = QGroupBox("Grid")
