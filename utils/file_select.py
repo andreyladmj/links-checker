@@ -17,6 +17,14 @@ class FileSelect:
         #     if not self.thread.isRunning():
         #         self.thread.start()
 
+    def openFileNamesDialog(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        files, _ = QFileDialog.getOpenFileNames(self, "QFileDialog.getOpenFileNames()", "",
+                                                "All Files (*);;Python Files (*.py)", options=options)
+        if files:
+            return files
+
     def saveFileDialog(self, links):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog

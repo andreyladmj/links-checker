@@ -8,10 +8,11 @@ from check_links import save_result_report, check_links_in_the_workbook
 from utils.link import Link
 
 
-class ParseXLSX(QtCore.QThread):
+class IndexerSiteChecker(QtCore.QThread):
     pbar_signal = QtCore.pyqtSignal(int)
     download_signal = QtCore.pyqtSignal(list)
     log_signal = QtCore.pyqtSignal(str)
+    response_signal = QtCore.pyqtSignal()
 
     def __init__(self, number, parent):
         super().__init__()
@@ -27,6 +28,7 @@ class ParseXLSX(QtCore.QThread):
         self.queue = []
         self.results = []
 
+        self.response_signal.connect(parent.add_result)
         self.log_signal.connect(parent.log)
 
     def set_links(self, links):
@@ -52,16 +54,11 @@ class ParseXLSX(QtCore.QThread):
         for link in self.links:
             if not link: continue
 
-            acceptor = link[0].value
-            anchor = link[1].value
-            donor = link[2].value
+            site, referer = link
 
-            if not acceptor or not donor or 'http' not in acceptor or 'http' not in donor: continue
-
-            headers = {
-                'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36'}
-            results.append(grequests.get(donor, headers=headers,
-                                         hooks={'response': self.check_acceptor_decorator(acceptor, anchor, donor)}))
+            headers = {'referer': referer,
+                       'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'}
+            results.append(grequests.get(site, headers=headers, hooks={'response': self.check_site_response}))
 
         self.results = grequests.map(results, exception_handler=self.exception_handler, size=16, gtimeout=12)
 
@@ -80,6 +77,15 @@ class ParseXLSX(QtCore.QThread):
             return response
 
         return check_acceptor
+
+    def check_site_response(self, response, **kwargs):
+        self.log_signal.emit('GET {}, Status: {}'.format(response.url, response.status_code))
+
+        if response.status_code == 301:
+            self.log_signal.emit('redirected to {}'.format(response.headers.get('Location')))
+
+        self.response_signal.emit(response)
+        return response
 
     def exception_handler(self):
         pass

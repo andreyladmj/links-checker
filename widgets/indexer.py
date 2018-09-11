@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QProgressBar, QL
 from openpyxl import load_workbook
 
 from utils.file_select import FileSelect
+from utils.indexer_site_checker import IndexerSiteChecker
 from utils.parse_xlsx import ParseXLSX
 from utils.utils import iterate_by_batch
 
@@ -24,8 +25,8 @@ class Indexer(QWidget, FileSelect):
         self.parent = parent
         self.processes = cpu_count()
         self.processes_list = []
-        self.queue = Queue()
         self.logs = []
+        self.sites_responses = []
         self.initUI()
 
     def initUI(self):
@@ -42,7 +43,7 @@ class Indexer(QWidget, FileSelect):
 
         for i in range(self.processes):
             hbox_layout = QHBoxLayout()
-            parser = ParseXLSX(number=i, parent=self)
+            parser = IndexerSiteChecker(number=i, parent=self)
 
             hbox_layout.addWidget(parser.qlabel)
             hbox_layout.addWidget(parser.qbar)
@@ -70,37 +71,40 @@ class Indexer(QWidget, FileSelect):
         self.qlabel_logs.setText("\n".join(self.logs))
 
     def select_xlsx_dialog(self):
-        file = self.openFileNameDialog()
-        if file:
-            self.log("Selected file {}".format(file))
-            self.parse_xlsx_file(file)
+        files = self.openFileNamesDialog()
+        if files:
+            self.log("Selected files {}".format(', '.join(files)))
+            self.parse_xlsx_file(files)
 
-    def parse_xlsx_file(self, file):
-        links = self.get_links(file)
+    def parse_xlsx_file(self, files):
+        links = []
+
+        for file in files:
+            links += self.get_links(file)
+
         self.log("Total links: {}".format(len(links)))
 
-        return
-
-        links = list(ws.iter_rows())
-
         batch_size = len(links) // self.processes + 1
-        self.log('Total Links Count: {}, Batch Size: {}'.format(len(links), batch_size))
+        self.log('Batch Size: {}'.format(batch_size))
 
         batches = iterate_by_batch(links, batch_size, None)
 
         for process, batch in zip(self.processes_list, batches):
             process.set_links(batch)
-            process.set_queue(self.queue)
             process.start()
+
+    def add_result(self, response):
+        self.sites_responses.append(response)
+        print(response)
 
     def get_links(self, file):
         urls = []
         with open(file, 'r') as file:
             for line in file.readlines():
-                domain, site, count = line.split(';')
+                site, referer, count = line.split(';')
                 count = int(count.rstrip())
 
-                urls += [(domain, site)] * count
+                urls += [(site, referer)] * count
 
         shuffle(urls)
         return urls
