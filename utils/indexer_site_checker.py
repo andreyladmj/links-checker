@@ -3,16 +3,19 @@ import time
 import grequests
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QProgressBar
+from urllib3 import HTTPConnectionPool
 
 from check_links import save_result_report, check_links_in_the_workbook
 from utils.link import Link
+from utils.utils import iterate_by_batch
 
 
 class IndexerSiteChecker(QtCore.QThread):
     pbar_signal = QtCore.pyqtSignal(int)
     download_signal = QtCore.pyqtSignal(list)
     log_signal = QtCore.pyqtSignal(str)
-    response_signal = QtCore.pyqtSignal()
+    response_signal = QtCore.pyqtSignal(object)
+    exception_signal = QtCore.pyqtSignal(object)
 
     def __init__(self, number, parent):
         super().__init__()
@@ -28,7 +31,8 @@ class IndexerSiteChecker(QtCore.QThread):
         self.queue = []
         self.results = []
 
-        self.response_signal.connect(parent.add_result)
+        self.response_signal.connect(parent.sites_responses.append)
+        self.exception_signal.connect(parent.exceptions.append)
         self.log_signal.connect(parent.log)
 
     def set_links(self, links):
@@ -51,16 +55,19 @@ class IndexerSiteChecker(QtCore.QThread):
     def run(self):
         results = []
 
-        for link in self.links:
-            if not link: continue
+        batches = iterate_by_batch(self.links, 20, None)
 
-            site, referer = link
+        for batch in batches:
+            for link in batch:
+                if not link: continue
 
-            headers = {'referer': referer,
-                       'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'}
-            results.append(grequests.get(site, headers=headers, hooks={'response': self.check_site_response}))
+                site, referer = link
 
-        self.results = grequests.map(results, exception_handler=self.exception_handler, size=16, gtimeout=12)
+                headers = {'referer': referer,
+                           'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'}
+                results.append(grequests.get(site, headers=headers, hooks={'response': self.check_site_response}, timeout=3))
+
+            self.results = grequests.map(results, exception_handler=self.exception_handler, size=16)
 
         self.finish()
 
@@ -78,14 +85,19 @@ class IndexerSiteChecker(QtCore.QThread):
 
         return check_acceptor
 
-    def check_site_response(self, response, **kwargs):
-        self.log_signal.emit('GET {}, Status: {}'.format(response.url, response.status_code))
+    def check_site_response(self, response, *args, **kwargs):
+        # self.log_signal.emit('GET {}, Status: {}'.format(response.url, response.status_code))
+        self.processed += 1
+        self.update_info()
 
-        if response.status_code == 301:
-            self.log_signal.emit('redirected to {}'.format(response.headers.get('Location')))
+        # if response.status_code == 301:
+        #     self.log_signal.emit('{} redirected to {}'.format(response.url, response.headers.get('Location')))
 
         self.response_signal.emit(response)
         return response
 
-    def exception_handler(self):
-        pass
+    def exception_handler(self, request, exception):
+        self.processed += 1
+        self.update_info()
+        self.log_signal.emit("Site: {}; Exception: {}".format(request.url, exception))
+        self.exception_signal.emit({'site': request.url, 'exception': exception})

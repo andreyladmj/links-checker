@@ -25,18 +25,36 @@ class Indexer(QWidget, FileSelect):
         self.parent = parent
         self.processes = cpu_count()
         self.processes_list = []
+        self.files = []
+
         self.logs = []
         self.sites_responses = []
+        self.exceptions = []
+
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        self.horizontalGroupBox = QGroupBox("Grid")
+        self.horizontalGroupBox = QGroupBox("Actions")
 
-        self.select_xlsx = QPushButton('Select XLSX')
-        self.select_xlsx.clicked.connect(self.select_xlsx_dialog)
+        self.select_xlsx_button = QPushButton('Select XLSX')
+        self.select_xlsx_button.clicked.connect(self.select_xlsx_dialog)
+
+        self.start_process_button = QPushButton('Start Process')
+        self.start_process_button.clicked.connect(self.parse_xlsx_files)
+
+        self.export_xlsx_report_button = QPushButton('Export XLSX Report')
+        # self.export_xlsx_report_button.clicked.connect(self.export_xlsx_report)
+
+
+        actions_layout = QGridLayout()
+        actions_layout.addWidget(self.select_xlsx_button,0,0)
+        actions_layout.addWidget(self.start_process_button,0,1)
+        actions_layout.addWidget(self.export_xlsx_report_button,0,2)
+        self.horizontalGroupBox.setLayout(actions_layout)
+
 
         # vbox_layout = QHBoxLayout()
         vbox_layuot = QVBoxLayout()
@@ -50,16 +68,12 @@ class Indexer(QWidget, FileSelect):
             vbox_layuot.addLayout(hbox_layout)
             self.processes_list.append(parser)
 
-
         self.qlabel_logs = QTextEdit("", self)
         self.qlabel_logs.setLineWrapMode(QTextEdit.NoWrap)
         self.qlabel_logs.setAlignment(Qt.AlignTop | Qt.AlignLeft)
 
-        # self.horizontalGroupBox.setLayout(actions_layout)
-
         windowLayout = QVBoxLayout()
         windowLayout.addWidget(self.horizontalGroupBox)
-        windowLayout.addWidget(self.select_xlsx)
         windowLayout.addLayout(vbox_layuot)
         windowLayout.addWidget(self.qlabel_logs)
         self.setLayout(windowLayout)
@@ -74,12 +88,17 @@ class Indexer(QWidget, FileSelect):
         files = self.openFileNamesDialog()
         if files:
             self.log("Selected files {}".format(', '.join(files)))
-            self.parse_xlsx_file(files)
+            self.files = files
 
-    def parse_xlsx_file(self, files):
+    def parse_xlsx_files(self):
         links = []
 
-        for file in files:
+        if not len(self.files):
+            return self.log('Please select file')
+        else:
+            self.log("Starting parse files...")
+
+        for file in self.files:
             links += self.get_links(file)
 
         self.log("Total links: {}".format(len(links)))
@@ -93,17 +112,12 @@ class Indexer(QWidget, FileSelect):
             process.set_links(batch)
             process.start()
 
-    def add_result(self, response):
-        self.sites_responses.append(response)
-        print(response)
-
     def get_links(self, file):
         urls = []
         with open(file, 'r') as file:
             for line in file.readlines():
                 site, referer, count = line.split(';')
                 count = int(count.rstrip())
-
                 urls += [(site, referer)] * count
 
         shuffle(urls)
