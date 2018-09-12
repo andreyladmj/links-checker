@@ -25,11 +25,11 @@ class FileSelect:
         if files:
             return files
 
-    def saveFileDialog(self, links):
+    def saveFileDialog(self, name=strftime("Report-%Y-%m-%d %H-%M-%S.xlsx")):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()",
-                                                  strftime("Report-%Y-%m-%d %H-%M-%S.xlsx"),
+                                                  name,
                                                   "All Files (*);;Text Files (*.txt)", options=options)
         return fileName
         # if fileName:

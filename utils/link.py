@@ -15,6 +15,7 @@ class Link:
         self.has_acceptor = False
         self.url_status = 0
         self.font = 'Verdana'
+        self.author = 'Yanka=)'
 
     def check(self, text, status_code):
         self.has_anchor = self.anchor in text
@@ -53,13 +54,13 @@ class Link:
             cell = WriteOnlyCell(ws_result, value='OK')
             cell.fill = PatternFill(start_color='FFdff0d8', end_color='FFdff0d8', fill_type='solid')
             cell.font = Font(name=self.font, size=size, color='3c763d', bold=True)
-            cell.comment = Comment(text="Good =)", author='Yana')
+            cell.comment = Comment(text="Good =)", author=self.author)
         else:
             cell = WriteOnlyCell(ws_result, value='NO')
             cell.fill = PatternFill(start_color='FFfcf8e3', end_color='FFfcf8e3', fill_type='solid')
             cell.font = Font(name=self.font, size=size, color='8a6d3b', bold=True)
             cell.comment = Comment(text="There are no anchor ({}) on the site: {}".format(self.anchor, self.acceptor),
-                                   author='Yana')
+                                   author=self.author)
 
         return cell
 
@@ -70,13 +71,13 @@ class Link:
             cell = WriteOnlyCell(ws_result, value='OK')
             cell.fill = PatternFill(start_color='FFdff0d8', end_color='FFdff0d8', fill_type='solid')
             cell.font = Font(name=self.font, size=size, color='3c763d', bold=True)
-            cell.comment = Comment(text="Good =)", author='Yana')
+            cell.comment = Comment(text="Good =)", author=self.author)
         else:
             cell = WriteOnlyCell(ws_result, value='NO')
             cell.fill = PatternFill(start_color='FFf2dede', end_color='FFf2dede', fill_type='solid')
             cell.font = Font(name=self.font, size=size, color='a94442', bold=True)
             cell.comment = Comment(text="There are no acceptor ({}) on the site: {}".format(self.acceptor, self.donor),
-                                   author='Yana')
+                                   author=self.author)
 
         return cell
 
@@ -86,11 +87,11 @@ class Link:
         if self.url_status == 200:
             cell = WriteOnlyCell(ws_result, value='OK')
             cell.font = Font(name=self.font, size=size, color='3c763d', bold=True)
-            cell.comment = Comment(text="Good =)", author='Yana')
+            cell.comment = Comment(text="Good =)", author=self.author)
         else:
             cell = WriteOnlyCell(ws_result, value='Some problems')
             cell.font = Font(name=self.font, size=size, color='a94442', bold=True)
             cell.comment = Comment(text="Seems we have some troubles with the site: {}".format(self.acceptor),
-                                   author='Yana')
+                                   author=self.author)
 
         return cell

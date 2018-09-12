@@ -17,8 +17,8 @@ class App(QWidget, FileSelect):
         self.title = 'Check Links'
         self.left = 10
         self.top = 50
-        self.width = 1024
-        self.height = 840
+        self.width = 512
+        self.height = 320
         self.initUI()
 
     def initUI(self):
