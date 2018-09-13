@@ -1,6 +1,9 @@
 from collections import Counter
+from datetime import datetime
+from math import ceil
 from os import cpu_count
 from random import shuffle
+from time import time
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, \
@@ -8,16 +11,27 @@ from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, \
 
 from utils.file_select import FileSelect
 from utils.indexer_site_checker import IndexerSiteChecker
+from utils.qlogger import QLogger
 from utils.utils import iterate_by_batch, make_xlsx_file
 
 
 class SpamLink:
-    __slots__ = ('url', 'referer', 'count')
+    __slots__ = ('url', 'referer', 'count', 'is_redirect', 'status_code', 'redirect_to', 'original_count')
 
-    def __init__(self, url, referer, count):
+    def __init__(self, url, referer, count, original_count=None):
         self.url = url
         self.referer = referer
         self.count = count
+        self.original_count = original_count or count
+        self.is_redirect = False
+        self.status_code = None
+        self.redirect_to = None
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return "{}, {}".format(self.url, self.status_code)
 
 
 class Indexer(QWidget, FileSelect):
@@ -33,6 +47,10 @@ class Indexer(QWidget, FileSelect):
         self.processes = cpu_count()
         self.processes_list = []
         self.files = []
+        self.mode = 'indexer'
+        self.finished = 0
+
+        self.qlogs = QLogger(self)
 
         self.logs = []
         self.sites_responses = []
@@ -61,8 +79,11 @@ class Indexer(QWidget, FileSelect):
         self.export_xlsx_redirects_report_button = QPushButton('Export Redirects')
         self.export_xlsx_redirects_report_button.clicked.connect(self.export_xlsx_redirects_report)
 
-        # self.fix_indexer_files_button = QPushButton('Fix Indexer Files', self)
-        # self.fix_indexer_files_button.clicked.connect(self.select_files_for_indexer_fix)
+        self.fix_indexer_files_button = QPushButton('Fix Indexer Files', self)
+        self.fix_indexer_files_button.clicked.connect(self.select_files_for_indexer_fix)
+
+        self.save_fixed_indexer_files_button = QPushButton('Save Fixed Indexer Files', self)
+        self.save_fixed_indexer_files_button.clicked.connect(self.save_fixed_indexer_files)
 
         actions_layout = QGridLayout()
         actions_layout.addWidget(self.select_xlsx_button, 0, 0)
@@ -70,7 +91,8 @@ class Indexer(QWidget, FileSelect):
         actions_layout.addWidget(self.export_xlsx_report_button, 0, 2)
         actions_layout.addWidget(self.export_xlsx_exceptions_report_button, 0, 3)
         actions_layout.addWidget(self.export_xlsx_redirects_report_button, 0, 4)
-        # actions_layout.addWidget(self.fix_indexer_files_button, 0, 5)
+        actions_layout.addWidget(self.fix_indexer_files_button, 1, 0)
+        actions_layout.addWidget(self.save_fixed_indexer_files_button, 1, 1)
         self.horizontalGroupBox.setLayout(actions_layout)
 
         # vbox_layout = QHBoxLayout()
@@ -102,37 +124,23 @@ class Indexer(QWidget, FileSelect):
         actions_layout.addWidget(self.show_all_exceptions_button, 0, 2)
         filterGroupBox.setLayout(actions_layout)
 
-        self.qlabel_logs = QTextEdit("", self)
-        self.qlabel_logs.setLineWrapMode(QTextEdit.NoWrap)
-        self.qlabel_logs.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-
         windowLayout = QVBoxLayout()
         windowLayout.addWidget(self.horizontalGroupBox)
         windowLayout.addLayout(vbox_layuot)
         windowLayout.addWidget(filterGroupBox)
-        windowLayout.addWidget(self.qlabel_logs)
+        windowLayout.addWidget(self.qlogs)
         self.setLayout(windowLayout)
 
         self.show()
 
-    def log(self, string):
-        self.logs.append(string)
-        self.qlabel_logs.setText("\n".join(self.logs))
-        self.qlabel_logs.verticalScrollBar().setValue(self.qlabel_logs.verticalScrollBar().maximum())
-
-    def set_logs(self, arr):
-        self.qlabel_logs.setText("\n".join(arr))
-        # self.qlabel_logs.moveCursor(QTextCursor.End)
-        self.qlabel_logs.verticalScrollBar().setValue(self.qlabel_logs.verticalScrollBar().maximum())
-
     def select_xlsx_dialog(self):
         files = self.openFileNamesDialog()
         if files:
-            self.log("Selected files {}".format(', '.join(files)))
+            self.qlogs.log("Selected files {}".format(', '.join(files)))
             self.files = files
 
     def show_all_logs(self):
-        self.set_logs(self.logs)
+        self.qlogs.set_logs(self.qlogs.logs)
 
     def show_all_redirected(self):
         redirected = []
@@ -140,33 +148,36 @@ class Indexer(QWidget, FileSelect):
             if response.status_code == 301:
                 redirected.append("{} redirected to {}\n".format(response.url, response.headers.get('Location')))
 
-        self.set_logs(redirected)
+        self.qlogs.set_logs(redirected)
 
     def show_all_exceptions(self):
         exceptions = ["{}: {}".format(exception['site'], exception['exception']) for exception in self.exceptions]
-        self.set_logs(exceptions)
+        self.qlogs.set_logs(exceptions)
 
     def parse_xlsx_files(self):
+        self.mode = 'indexer'
+        self.start_time = time()
         links = []
 
         if not len(self.files):
-            return self.log('Please select file')
+            return self.qlogs.log('Please select file')
         else:
-            self.log("Starting parse files...")
+            self.qlogs.log("Starting parse files...")
 
         for file in self.files:
             links += self.get_links(file)
 
-        self.log("Total links: {}".format(len(links)))
+        self.qlogs.log("Total links: {}".format(len(links)))
 
-        batch_size = len(links) // self.processes + 1
-        self.log('Batch Size: {}'.format(batch_size))
-
+        batch_size = ceil(len(links) / self.processes)
+        self.qlogs.log('Batch Size: {}'.format(batch_size))
         batches = iterate_by_batch(links, batch_size, None)
 
         for process, batch in zip(self.processes_list, batches):
             process.set_links(batch)
             process.start()
+
+        # exit_codes = [p.wait() for p in self.processes_list]
 
     def get_links(self, file, for_checking=False):
         urls = []
@@ -174,45 +185,97 @@ class Indexer(QWidget, FileSelect):
             for line in file.readlines():
                 site, referer, count = line.split(';')
                 count = int(count.rstrip())
+                original_count = int(count)
 
                 if for_checking:
-                    urls += [(site, referer)]
-                else:
-                    urls += [(site, referer)] * count
+                    count = 1
+                    print('Count', count, original_count)
+
+                urls.append(SpamLink(site, referer, count, original_count))
 
         shuffle(urls)
         return urls
 
     def export_xlsx_report(self):
         cnt = Counter()
-        responses = self.sites_responses
 
-        for response in responses:
-            cnt[response.url] += 1
+        for proces in self.processes_list:
+            for link in proces.links:
+                if link:
+                    cnt[link.url] += 1
 
-        make_xlsx_file('report_sa.xlsx', head=['Site', 'Count'], body=cnt.items())
+        self.qlogs.log('Saved as report_statistic.xlsx')
+        make_xlsx_file('report_statistic.xlsx', head=['Site', 'Count'], body=cnt.items())
 
     def export_xlsx_exceptions_report(self):
         report = []
         for exception in self.exceptions:
             report.append([exception['site'], str(exception['exception'])])
 
-        make_xlsx_file('report_exceptions.xlsx', head=['Site', 'Exception'], body=report)
+        self.qlogs.log('Saved as report_statistic_exceptions.xlsx')
+        make_xlsx_file('report_statistic_exceptions.xlsx', head=['Site', 'Exception'], body=report)
 
     def export_xlsx_redirects_report(self):
         report = []
-        responses = self.sites_responses
-        for response in responses:
-            if response.status_code == 301:
-                report.append([response.url, response.headers.get('Location')])
+        for proces in self.processes_list:
+            for link in proces.links:
+                if link and link.status_code == 301:
+                    report.append([link.url, link.redirect_to])
 
-        make_xlsx_file('report_redirect.xlsx', head=['Site', 'Redirect To'], body=report)
+        self.qlogs.log('Saved as report_statistic_redirect.xlsx')
+        make_xlsx_file('report_statistic_redirect.xlsx', head=['Site', 'Redirect To'], body=report)
 
     def select_files_for_indexer_fix(self):
         file = self.openFileNameDialog()
         if file:
-            self.log("Trying to fix selected file {}".format(file))
+            self.qlogs.log("Trying to fix selected file {}".format(file))
             self.fix_indexer_files(file)
 
     def finish(self):
-        self.log('Finished!')
+        self.finished += 1
+
+        if self.finished == self.processes:
+            self.qlogs.log('Finished!')
+            value = datetime.fromtimestamp(time() - self.start_time)
+            self.qlogs.log("Time Execution: {}".format(value.strftime('%H:%M:%S')))
+
+    def save_fixed_indexer_files(self):
+        if self.mode != 'fix_file':
+            return self.qlogs.log("Sorry, but seems you didn't fix any files")
+
+        filename = self.saveFileDialog()
+
+        if filename:
+            saved_links = []
+
+            with open(filename, 'w') as file:
+                for response in self.sites_responses:
+                    spam_link = response.spam_link
+
+                    if not spam_link.is_redirect and hash(spam_link) not in saved_links:
+                        file.write("{};{};{}\n".format(spam_link.url, spam_link.referer, spam_link.original_count))
+                        saved_links.append(hash(spam_link))
+
+            self.qlogs.log("Saved {}".format(filename))
+
+    def save_exception(self, object):
+        site = object['site']
+        exception = object['exception']
+        with open('tmp/exceptions.txt', 'w+') as file:
+            file.write("{}; {}\n".format(site, str(exception)))
+
+    def fix_indexer_files(self, file):
+        self.start_time = time()
+        self.mode = 'fix_file'
+        links = self.get_links(file, for_checking=True)
+        self.qlogs.log("Total links: {}".format(len(links)))
+        batch_size = ceil(len(links) / self.processes)
+        self.qlogs.log('Batch Size: {}'.format(batch_size))
+
+        batches = iterate_by_batch(links, batch_size, None)
+
+        for process, batch in zip(self.processes_list, batches):
+            process.set_links(batch)
+            process.start()
+
+        # exit_codes = [p.wait() for p in self.processes_list]
