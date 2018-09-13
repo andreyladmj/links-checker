@@ -47,9 +47,10 @@ class IndexerSiteChecker(QtCore.QThread):
         self.update_info()
 
     def update_info(self):
-        self.qlabel.setText('Worker: {} (Processed {} of {})'.format(self.number, self.processed, self.total))
-        # self.pbar_signal.emit(self.processed / self.total * 100)
-        self.qbar.setValue(int(self.processed / self.total * 100))
+        # self.qlabel.setText('Worker: {} (Processed {} of {})'.format(self.number, self.processed, self.total))
+        # # self.pbar_signal.emit(self.processed / self.total * 100)
+        # self.qbar.setValue(int(self.processed / self.total * 100))
+        self.log_signal.emit("Worker: {} - {}%, (Processed {} of {})".format(self.number, self.processed / self.total * 100, self.processed, self.total))
 
     def finish(self):
         # self.processed = self.total
@@ -108,6 +109,7 @@ class IndexerSiteChecker(QtCore.QThread):
                 self.total += 1
 
             self.processed += 1
+            # self.update_info()
             return response
 
             spam_link.url = response.url
