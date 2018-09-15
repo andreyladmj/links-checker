@@ -57,7 +57,7 @@ class WPComments(QWidget, FileSelect):
         self.text_comments = self.read_file('wp/TextComment.txt')
         self.user_names = self.read_file('wp/UserName.txt')
 
-        self.browser = self.create_webdriver()
+        self.qlogs = QLogger(self)
 
         self.initUI()
 
@@ -104,7 +104,7 @@ class WPComments(QWidget, FileSelect):
 
         windowLayout = QVBoxLayout()
         windowLayout.addWidget(self.horizontalGroupBox)
-        # windowLayout.addWidget(self.qlogs)
+        windowLayout.addWidget(self.qlogs)
         self.setLayout(windowLayout)
 
         self.show()
@@ -125,6 +125,7 @@ class WPComments(QWidget, FileSelect):
         comment.send_keys(message)
 
     def post_comments(self):
+        self.browser = self.create_webdriver()
         # url = self.donors[0]
         # acceptor = random.choice(self.acceptors)
         # mail = random.choice(self.mails)
@@ -183,7 +184,7 @@ class WPComments(QWidget, FileSelect):
                 if input.get_attribute('name') == 'q': break
                 all_fields.append(input.get_attribute('name'))
 
-            if 'submit' in all_fields:
+            if 'email' in all_fields:
                 return form
 
         return None
