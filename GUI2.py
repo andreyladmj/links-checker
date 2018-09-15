@@ -8,6 +8,7 @@ from PyQt5.QtCore import pyqtSlot
 from utils.file_select import FileSelect
 from widgets.indexer import Indexer
 from widgets.link_checker import CheckAcceptors
+from widgets.wp_comments import WPComments
 
 
 class App(QWidget, FileSelect):
@@ -66,9 +67,12 @@ class App(QWidget, FileSelect):
         self.indexer = QPushButton('Run Indexer', self)
         self.indexer.clicked.connect(self.open_indexer_window)
 
+        self.wp_comments_button = QPushButton('WP Comments', self)
+        self.wp_comments_button.clicked.connect(self.open_wp_comments_window)
+
         layout.addWidget(self.check_acceptors,0,0)
         layout.addWidget(self.indexer,0,1)
-        layout.addWidget(QPushButton('3'),0,2)
+        layout.addWidget(self.wp_comments_button,0,2)
         layout.addWidget(QPushButton('4'),1,0)
         layout.addWidget(QPushButton('5'),1,1)
         layout.addWidget(QPushButton('6'),1,2)
@@ -85,6 +89,10 @@ class App(QWidget, FileSelect):
     def open_indexer_window(self):
         self.indexer_window = Indexer(self)
         self.indexer_window.show()
+
+    def open_wp_comments_window(self):
+        self.wp_comments_window = WPComments(self)
+        self.wp_comments_window.show()
 
     @pyqtSlot()
     def on_click(self):

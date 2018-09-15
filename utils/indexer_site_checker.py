@@ -13,22 +13,28 @@ from utils.utils import iterate_by_batch
 
 class IndexerSiteChecker(QtCore.QThread):
     pbar_signal = QtCore.pyqtSignal(int)
+    plabel_signal = QtCore.pyqtSignal(str)
+
+
     log_signal = QtCore.pyqtSignal(str)
     response_signal = QtCore.pyqtSignal(object)
     exception_signal = QtCore.pyqtSignal(object)
     finish_signal = QtCore.pyqtSignal()
 
+
+    # percent_log_signal = QtCore.pyqtSignal(int, str)
+
     def __init__(self, number, parent):
         super().__init__()
         self.number = number
-        self.qlabel = QLabel('Process: {}'.format(self.number), parent)
-        self.qbar = QProgressBar(parent)
-        self.qbar.setMaximum(100)
-        self.qbar.setMinimum(0)
+        # self.qlabel = QLabel('Process: {}'.format(self.number), parent)
+        # self.qbar = QProgressBar(parent)
+        # self.qbar.setMaximum(100)
+        # self.qbar.setMinimum(0)
         self.links = []
         self.processed = 0
         self.total = 0
-        self.pbar_signal.connect(self.qbar.setValue)
+        # self.pbar_signal.connect(self.qbar.setValue)
         self.queue = []
         self.results = []
 
@@ -39,6 +45,9 @@ class IndexerSiteChecker(QtCore.QThread):
         self.log_signal.connect(parent.qlogs.log)
         self.finish_signal.connect(parent.finish)
 
+
+        # self.percent_log_signal.connect(parent.qlogs.update_thread_info)
+
     def set_links(self, links):
         self.pbar_signal.emit(0)
         self.links = links
@@ -48,9 +57,18 @@ class IndexerSiteChecker(QtCore.QThread):
 
     def update_info(self):
         # self.qlabel.setText('Worker: {} (Processed {} of {})'.format(self.number, self.processed, self.total))
-        # # self.pbar_signal.emit(self.processed / self.total * 100)
+        self.pbar_signal.emit(self.processed / self.total * 100)
+        self.plabel_signal.emit('Worker: {} (Processed {} of {})'.format(self.number, self.processed, self.total))
+        # print(self.number, self.processed, self.total, int(self.processed / self.total * 100))
         # self.qbar.setValue(int(self.processed / self.total * 100))
-        self.log_signal.emit("Worker: {} - {}%, (Processed {} of {})".format(self.number, self.processed / self.total * 100, self.processed, self.total))
+        # self.log_signal.emit("Worker: {} - {}%, (Processed {} of {})".format(self.number, self.processed / self.total * 100, self.processed, self.total))
+
+    def get_info(self):
+        return "Worker: {} - {}%, (Processed {} of {})".format(self.number, self.processed / self.total * 100, self.processed, self.total)
+
+    def set_bar_updating_bar_func(self, bar_fn, label_fn):
+        self.pbar_signal.connect(bar_fn)
+        self.plabel_signal.connect(label_fn)
 
     def finish(self):
         # self.processed = self.total
@@ -60,8 +78,8 @@ class IndexerSiteChecker(QtCore.QThread):
 
     def run(self):
         can = True
-        concurency = 60
-        batch_size = concurency * 2
+        concurency = 20
+        batch_size = concurency * 5
 
         while can:
             total_count = 0
@@ -126,4 +144,4 @@ class IndexerSiteChecker(QtCore.QThread):
         self.processed += 1
         self.black_list.append(request.url)
         # self.log_signal.emit("Site: {}; Exception: {}".format(request.url, exception))
-        # self.exception_signal.emit({'site': request.url, 'exception': exception})
+        self.exception_signal.emit({'site': request.url, 'exception': exception})

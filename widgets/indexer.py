@@ -5,9 +5,9 @@ from os import cpu_count
 from random import shuffle
 from time import time
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, \
-    QVBoxLayout, QGroupBox, QGridLayout, QTextEdit
+    QVBoxLayout, QGroupBox, QGridLayout, QTextEdit, QLabel, QProgressBar
 
 from utils.file_select import FileSelect
 from utils.indexer_site_checker import IndexerSiteChecker
@@ -33,6 +33,9 @@ class SpamLink:
     def __str__(self):
         return "{}, {}".format(self.url, self.status_code)
 
+    def get_requests_count(self):
+        return self.original_count - self.count
+
 
 class Indexer(QWidget, FileSelect):
 
@@ -49,6 +52,7 @@ class Indexer(QWidget, FileSelect):
         self.files = []
         self.mode = 'indexer'
         self.finished = 0
+        self.start_time = 0
 
         self.qlogs = QLogger(self)
 
@@ -57,6 +61,15 @@ class Indexer(QWidget, FileSelect):
         self.exceptions = []
 
         self.initUI()
+
+    def _update_status(self):
+        if self.start_time:
+            diff = int(time() - self.start_time)
+            days = diff // 86400
+            hours = diff // 3600 % 24
+            minutes = diff // 60 % 60
+            seconds = diff % 60
+            self.time_execution_label.setText("Time Execution: {} days, {:02d}:{:02d}:{:02d}".format(days, hours, minutes, seconds))
 
     def initUI(self):
         self.setWindowTitle(self.title)
@@ -95,15 +108,32 @@ class Indexer(QWidget, FileSelect):
         actions_layout.addWidget(self.save_fixed_indexer_files_button, 1, 1)
         self.horizontalGroupBox.setLayout(actions_layout)
 
-        # vbox_layout = QHBoxLayout()
+        self._status_update_timer = QTimer(self)
+        self._status_update_timer.setSingleShot(False)
+        self._status_update_timer.timeout.connect(self._update_status)
+        self._status_update_timer.start(1000)
+
         vbox_layuot = QVBoxLayout()
+        self.bars = {}
 
         for i in range(self.processes):
             hbox_layout = QHBoxLayout()
             parser = IndexerSiteChecker(number=i, parent=self)
 
-            hbox_layout.addWidget(parser.qlabel)
-            hbox_layout.addWidget(parser.qbar)
+            bar = QProgressBar(self)
+            bar.setMaximum(100)
+            bar.setMinimum(0)
+
+            self.bars[i] = {
+                'label': QLabel('Process: {}'.format(i), self),
+                'bar': bar,
+            }
+
+            parser.set_bar_updating_bar_func(self.bars[i]['bar'].setValue, self.bars[i]['label'].setText)
+
+            hbox_layout.addWidget(self.bars[i]['label'])
+            hbox_layout.addWidget(self.bars[i]['bar'])
+
             vbox_layuot.addLayout(hbox_layout)
             self.processes_list.append(parser)
 
@@ -112,7 +142,7 @@ class Indexer(QWidget, FileSelect):
         self.show_all_logs_button = QPushButton('Show All logs')
         self.show_all_logs_button.clicked.connect(self.show_all_logs)
 
-        self.show_all_redirected_button = QPushButton('Show Redirected')
+        self.show_all_redirected_button = QPushButton('Show Redirects')
         self.show_all_redirected_button.clicked.connect(self.show_all_redirected)
 
         self.show_all_exceptions_button = QPushButton('Show Exceptions')
@@ -124,9 +154,16 @@ class Indexer(QWidget, FileSelect):
         actions_layout.addWidget(self.show_all_exceptions_button, 0, 2)
         filterGroupBox.setLayout(actions_layout)
 
+        time_execution = QGroupBox("Info")
+        vbox_info_layout = QHBoxLayout()
+        self.time_execution_label = QLabel('Time Execution:', self)
+        vbox_info_layout.addWidget(self.time_execution_label)
+        time_execution.setLayout(vbox_info_layout)
+
         windowLayout = QVBoxLayout()
         windowLayout.addWidget(self.horizontalGroupBox)
         windowLayout.addLayout(vbox_layuot)
+        windowLayout.addWidget(time_execution)
         windowLayout.addWidget(filterGroupBox)
         windowLayout.addWidget(self.qlogs)
         self.setLayout(windowLayout)
@@ -144,9 +181,11 @@ class Indexer(QWidget, FileSelect):
 
     def show_all_redirected(self):
         redirected = []
-        for response in self.sites_responses:
-            if response.status_code == 301:
-                redirected.append("{} redirected to {}\n".format(response.url, response.headers.get('Location')))
+
+        for proces in self.processes_list:
+            for link in proces.links:
+                if link and link.is_redirect:
+                    redirected.append("{} redirected to {}\n".format(link.url, link.redirect_to))
 
         self.qlogs.set_logs(redirected)
 
@@ -202,7 +241,7 @@ class Indexer(QWidget, FileSelect):
         for proces in self.processes_list:
             for link in proces.links:
                 if link:
-                    cnt[link.url] += 1
+                    cnt[link.url] += link.get_requests_count()
 
         self.qlogs.log('Saved as report_statistic.xlsx')
         make_xlsx_file('report_statistic.xlsx', head=['Site', 'Count'], body=cnt.items())
@@ -217,9 +256,10 @@ class Indexer(QWidget, FileSelect):
 
     def export_xlsx_redirects_report(self):
         report = []
+
         for proces in self.processes_list:
             for link in proces.links:
-                if link and link.status_code == 301:
+                if link and link.is_redirect:
                     report.append([link.url, link.redirect_to])
 
         self.qlogs.log('Saved as report_statistic_redirect.xlsx')
@@ -231,10 +271,13 @@ class Indexer(QWidget, FileSelect):
             self.qlogs.log("Trying to fix selected file {}".format(file))
             self.fix_indexer_files(file)
 
+    def is_finished(self):
+        return self.finished == self.processes
+
     def finish(self):
         self.finished += 1
 
-        if self.finished == self.processes:
+        if self.is_finished():
             self.qlogs.log('Finished!')
             value = datetime.fromtimestamp(time() - self.start_time)
             self.qlogs.log("Time Execution: {}".format(value.strftime('%H:%M:%S')))
