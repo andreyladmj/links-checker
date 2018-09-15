@@ -51,19 +51,15 @@ class WPComments(QWidget, FileSelect):
         self.processes = cpu_count()
         self.processes_list = []
 
-        self.acceptors = self.read_file('wp/acceptors.txt')
-        self.donors = self.read_file('wp/donors.txt')
-        self.mails = self.read_file('wp/Mail.txt')
-        self.text_comments = self.read_file('wp/TextComment.txt')
-        self.user_names = self.read_file('wp/UserName.txt')
-
         self.qlogs = QLogger(self)
 
-        self.initUI()
+        self.acceptors_file = 'wp/acceptors.txt'
+        self.donors_file = 'wp/donors.txt'
+        self.mails_file = 'wp/Mail.txt'
+        self.text_comments_file = 'wp/TextComment.txt'
+        self.user_names_file = 'wp/UserName.txt'
 
-    def read_file(self, fname):
-        with open(fname) as f:
-            return f.readlines()
+        self.initUI()
 
     def initUI(self):
         self.setWindowTitle(self.title)
@@ -109,6 +105,17 @@ class WPComments(QWidget, FileSelect):
 
         self.show()
 
+    def set_params(self):
+        self.acceptors = self.read_file(self.acceptors_file)
+        self.donors = self.read_file(self.donors_file)
+        self.mails = self.read_file(self.mails_file)
+        self.text_comments = self.read_file(self.text_comments_file)
+        self.user_names = self.read_file(self.user_names_file)
+
+    def read_file(self, fname):
+        with open(fname) as f:
+            return f.readlines()
+
     def create_webdriver(self):
         chrome_options = Options()
         # chrome_options.add_argument('--headless')
@@ -135,14 +142,14 @@ class WPComments(QWidget, FileSelect):
         total = len(self.donors)
 
         for url in self.donors:
+            total -= 1
             try:
                 self.browser.get(url)
                 form = self.get_comments_form()
                 names = self.get_input_names(form)
                 print(url, names)
             except Exception as e:
-                print("URL: {} has some troubles! trace: {}".format(url, str(e)))
-
+                print("URL: {} has some troubles! trace: {}. Left: {}".format(url, str(e), total))
 
         return
 
