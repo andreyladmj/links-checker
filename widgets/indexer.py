@@ -64,12 +64,15 @@ class Indexer(QWidget, FileSelect):
 
     def _update_status(self):
         if self.start_time:
-            diff = int(time() - self.start_time)
-            days = diff // 86400
-            hours = diff // 3600 % 24
-            minutes = diff // 60 % 60
-            seconds = diff % 60
-            self.time_execution_label.setText("Time Execution: {} days, {:02d}:{:02d}:{:02d}".format(days, hours, minutes, seconds))
+            self.update_execution_time()
+
+    def update_execution_time(self):
+        diff = int(time() - self.start_time)
+        days = diff // 86400
+        hours = diff // 3600 % 24
+        minutes = diff // 60 % 60
+        seconds = diff % 60
+        self.time_execution_label.setText("Time Execution: {} days, {:02d}:{:02d}:{:02d}".format(days, hours, minutes, seconds))
 
     def initUI(self):
         self.setWindowTitle(self.title)
@@ -279,8 +282,8 @@ class Indexer(QWidget, FileSelect):
 
         if self.is_finished():
             self.qlogs.log('Finished!')
-            value = datetime.fromtimestamp(time() - self.start_time)
-            self.qlogs.log("Time Execution: {}".format(value.strftime('%H:%M:%S')))
+            self.update_execution_time()
+            self.start_time = 0
 
     def save_fixed_indexer_files(self):
         if self.mode != 'fix_file':
