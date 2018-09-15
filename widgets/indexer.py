@@ -72,7 +72,8 @@ class Indexer(QWidget, FileSelect):
         hours = diff // 3600 % 24
         minutes = diff // 60 % 60
         seconds = diff % 60
-        self.time_execution_label.setText("Time Execution: {} days, {:02d}:{:02d}:{:02d}".format(days, hours, minutes, seconds))
+        self.time_execution_label.setText(
+            "Time Execution: {} days, {:02d}:{:02d}:{:02d}".format(days, hours, minutes, seconds))
 
     def initUI(self):
         self.setWindowTitle(self.title)
