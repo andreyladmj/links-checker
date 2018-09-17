@@ -6,35 +6,15 @@ from random import shuffle
 from time import time
 
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, \
-    QVBoxLayout, QGroupBox, QGridLayout, QTextEdit, QLabel, QProgressBar
+    QVBoxLayout, QGroupBox, QGridLayout, QTextEdit, QLabel, QProgressBar, QCheckBox, QLineEdit
 
 from utils.file_select import FileSelect
 from utils.indexer_site_checker import IndexerSiteChecker
 from utils.qlogger import QLogger
 from utils.utils import iterate_by_batch, make_xlsx_file
-
-
-class SpamLink:
-    __slots__ = ('url', 'referer', 'count', 'is_redirect', 'status_code', 'redirect_to', 'original_count')
-
-    def __init__(self, url, referer, count, original_count=None):
-        self.url = url
-        self.referer = referer
-        self.count = count
-        self.original_count = original_count or count
-        self.is_redirect = False
-        self.status_code = None
-        self.redirect_to = None
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __str__(self):
-        return "{}, {}".format(self.url, self.status_code)
-
-    def get_requests_count(self):
-        return self.original_count - self.count
+from widgets.components.spam_link import SpamLink
 
 
 class Indexer(QWidget, FileSelect):
@@ -53,6 +33,7 @@ class Indexer(QWidget, FileSelect):
         self.mode = 'indexer'
         self.finished = 0
         self.start_time = 0
+        self.use_upper_limit = False
 
         self.qlogs = QLogger(self)
 
@@ -79,7 +60,69 @@ class Indexer(QWidget, FileSelect):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        self.horizontalGroupBox = QGroupBox("Actions")
+        settingsGroupBox = self.getSettingsUI()
+        horizontalGroupBox = self.getActionsUI()
+        filterGroupBox = self.getFilterUI()
+        self.processesGroupBox = self.getProcessesUI()
+
+        self._status_update_timer = QTimer(self)
+        self._status_update_timer.setSingleShot(False)
+        self._status_update_timer.timeout.connect(self._update_status)
+        self._status_update_timer.start(1000)
+
+        time_execution = QGroupBox("Info")
+        vbox_info_layout = QHBoxLayout()
+        self.time_execution_label = QLabel('Time Execution:', self)
+        vbox_info_layout.addWidget(self.time_execution_label)
+        time_execution.setLayout(vbox_info_layout)
+
+        windowLayout = QVBoxLayout()
+        windowLayout.addWidget(settingsGroupBox)
+        windowLayout.addWidget(horizontalGroupBox)
+        windowLayout.addLayout(self.processesGroupBox)
+        windowLayout.addWidget(time_execution)
+        windowLayout.addWidget(filterGroupBox)
+        windowLayout.addWidget(self.qlogs)
+        self.setLayout(windowLayout)
+
+        self.show()
+
+    def getSettingsUI(self):
+        settingsGroupBox = QGroupBox("Settings")
+        settingsGridLayout = QGridLayout()
+        self.upper_limit_checkbox = QCheckBox("Use upper limit", self)
+        self.upper_limit_checkbox.stateChanged.connect(self.change_upper_limit_state)
+
+        self.settings_threads = QLineEdit()
+        self.settings_threads.setValidator(QIntValidator(0, 100000))
+        self.settings_threads.setText(str(self.processes))
+        self.settings_threads.setMaximumWidth(50)
+
+        self.settings_upper_limit = QLineEdit()
+        self.settings_upper_limit.setValidator(QIntValidator(0, 100000))
+        self.settings_upper_limit.setMaximumWidth(50)
+
+        self.settings_threads_apply_button = QPushButton('Start Process')
+        self.settings_threads_apply_button.clicked.connect(self.settings_threads_apply)
+
+        hbox_layout = QHBoxLayout()
+        hbox_layout.addWidget(QLabel('Number of processes', self))
+        hbox_layout.addWidget(self.settings_threads)
+        hbox_layout.addWidget(self.settings_threads_apply_button)
+
+        settingsGridLayout.addWidget(self.upper_limit_checkbox, 0, 0)
+        settingsGridLayout.addWidget(self.settings_upper_limit, 0, 1)
+        settingsGridLayout.addLayout(hbox_layout, 1, 0)
+        settingsGroupBox.setLayout(settingsGridLayout)
+        return settingsGroupBox
+
+    def settings_threads_apply(self):
+        self.processes = int(self.settings_threads.text())
+        self.processes_list = []
+        self.processesGroupBox = self.getProcessesUI()
+
+    def getActionsUI(self):
+        horizontalGroupBox = QGroupBox("Actions")
 
         self.select_xlsx_button = QPushButton('Select XLSX')
         self.select_xlsx_button.clicked.connect(self.select_xlsx_dialog)
@@ -110,13 +153,29 @@ class Indexer(QWidget, FileSelect):
         actions_layout.addWidget(self.export_xlsx_redirects_report_button, 0, 4)
         actions_layout.addWidget(self.fix_indexer_files_button, 1, 0)
         actions_layout.addWidget(self.save_fixed_indexer_files_button, 1, 1)
-        self.horizontalGroupBox.setLayout(actions_layout)
+        horizontalGroupBox.setLayout(actions_layout)
+        return horizontalGroupBox
 
-        self._status_update_timer = QTimer(self)
-        self._status_update_timer.setSingleShot(False)
-        self._status_update_timer.timeout.connect(self._update_status)
-        self._status_update_timer.start(1000)
+    def getFilterUI(self):
+        filterGroupBox = QGroupBox("Filter")
 
+        self.show_all_logs_button = QPushButton('Show All logs')
+        self.show_all_logs_button.clicked.connect(self.show_all_logs)
+
+        self.show_all_redirected_button = QPushButton('Show Redirects')
+        self.show_all_redirected_button.clicked.connect(self.show_all_redirected)
+
+        self.show_all_exceptions_button = QPushButton('Show Exceptions')
+        self.show_all_exceptions_button.clicked.connect(self.show_all_exceptions)
+
+        actions_layout = QGridLayout()
+        actions_layout.addWidget(self.show_all_logs_button, 0, 0)
+        actions_layout.addWidget(self.show_all_redirected_button, 0, 1)
+        actions_layout.addWidget(self.show_all_exceptions_button, 0, 2)
+        filterGroupBox.setLayout(actions_layout)
+        return filterGroupBox
+
+    def getProcessesUI(self):
         vbox_layuot = QVBoxLayout()
         self.bars = {}
 
@@ -141,38 +200,7 @@ class Indexer(QWidget, FileSelect):
             vbox_layuot.addLayout(hbox_layout)
             self.processes_list.append(parser)
 
-        filterGroupBox = QGroupBox("Filter")
-
-        self.show_all_logs_button = QPushButton('Show All logs')
-        self.show_all_logs_button.clicked.connect(self.show_all_logs)
-
-        self.show_all_redirected_button = QPushButton('Show Redirects')
-        self.show_all_redirected_button.clicked.connect(self.show_all_redirected)
-
-        self.show_all_exceptions_button = QPushButton('Show Exceptions')
-        self.show_all_exceptions_button.clicked.connect(self.show_all_exceptions)
-
-        actions_layout = QGridLayout()
-        actions_layout.addWidget(self.show_all_logs_button, 0, 0)
-        actions_layout.addWidget(self.show_all_redirected_button, 0, 1)
-        actions_layout.addWidget(self.show_all_exceptions_button, 0, 2)
-        filterGroupBox.setLayout(actions_layout)
-
-        time_execution = QGroupBox("Info")
-        vbox_info_layout = QHBoxLayout()
-        self.time_execution_label = QLabel('Time Execution:', self)
-        vbox_info_layout.addWidget(self.time_execution_label)
-        time_execution.setLayout(vbox_info_layout)
-
-        windowLayout = QVBoxLayout()
-        windowLayout.addWidget(self.horizontalGroupBox)
-        windowLayout.addLayout(vbox_layuot)
-        windowLayout.addWidget(time_execution)
-        windowLayout.addWidget(filterGroupBox)
-        windowLayout.addWidget(self.qlogs)
-        self.setLayout(windowLayout)
-
-        self.show()
+        return vbox_layuot
 
     def select_xlsx_dialog(self):
         files = self.openFileNamesDialog()
@@ -194,6 +222,7 @@ class Indexer(QWidget, FileSelect):
         self.qlogs.set_logs(redirected)
 
     def show_all_exceptions(self):
+        print('show_all_exceptions', len(self.exceptions))
         exceptions = ["{}: {}".format(exception['site'], exception['exception']) for exception in self.exceptions]
         self.qlogs.set_logs(exceptions)
 
@@ -232,7 +261,6 @@ class Indexer(QWidget, FileSelect):
 
                 if for_checking:
                     count = 1
-                    print('Count', count, original_count)
 
                 urls.append(SpamLink(site, referer, count, original_count))
 
@@ -281,10 +309,14 @@ class Indexer(QWidget, FileSelect):
     def finish(self):
         self.finished += 1
 
+        for process in self.processes_list:
+            print('Is process finished', process.number, process.isFinished())
+
         if self.is_finished():
             self.qlogs.log('Finished!')
             self.update_execution_time()
             self.start_time = 0
+            self.show_finished_program_info()
 
     def save_fixed_indexer_files(self):
         if self.mode != 'fix_file':
@@ -306,10 +338,11 @@ class Indexer(QWidget, FileSelect):
             self.qlogs.log("Saved {}".format(filename))
 
     def save_exception(self, object):
+        self.exceptions.append(object)
         site = object['site']
         exception = object['exception']
-        with open('tmp/exceptions.txt', 'w+') as file:
-            file.write("{}; {}\n".format(site, str(exception)))
+        # with open('tmp/exceptions.txt', 'w+') as file:
+        #     file.write("{}; {}\n".format(site, str(exception)))
 
     def fix_indexer_files(self, file):
         self.start_time = time()
@@ -326,3 +359,23 @@ class Indexer(QWidget, FileSelect):
             process.start()
 
         # exit_codes = [p.wait() for p in self.processes_list]
+
+    def change_upper_limit_state(self):
+        self.use_upper_limit = not self.use_upper_limit
+
+    def show_finished_program_info(self):
+        redirects = 0
+        exceptions = len(self.exceptions)
+        processed = 0
+
+        for proces in self.processes_list:
+            for link in proces.links:
+                if link:
+                    if link.is_redirect:
+                        redirects += 1
+                    else:
+                        processed += 1
+
+        self.qlogs.log("Total redirects: {}".format(redirects))
+        self.qlogs.log("Total exceptions: {}".format(exceptions))
+        self.qlogs.log("Total processed: {}".format(processed))
