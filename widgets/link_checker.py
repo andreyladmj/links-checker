@@ -38,11 +38,14 @@ class CheckAcceptors(QWidget, FileSelect):
         self.select_xlsx = QPushButton('Select XLSX')
         self.select_xlsx.clicked.connect(self.select_xlsx_dialog)
 
+        self.export_xlsx_button = QPushButton('Export XLSX Report')
+        self.export_xlsx_button.clicked.connect(self.export_xlsx)
+
         actions_layout = QGridLayout()
         actions_layout.setColumnStretch(1, 3)
         actions_layout.addWidget(self.select_xlsx,0,0)
         actions_layout.addWidget(QPushButton('Export Logs'),0,1)
-        actions_layout.addWidget(QPushButton('Export XLSX Report'),0,2)
+        actions_layout.addWidget(self.export_xlsx_button,0,2)
 
         vbox_layuot = QVBoxLayout()
 
@@ -106,3 +109,6 @@ class CheckAcceptors(QWidget, FileSelect):
             process.set_links(batch)
             process.set_queue(self.queue)
             process.start()
+
+    def export_xlsx(self):
+        pass

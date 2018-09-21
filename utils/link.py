@@ -18,8 +18,9 @@ class Link:
         self.author = 'Yanka=)'
 
     def check(self, text, status_code):
-        self.has_anchor = self.anchor in text
-        self.has_acceptor = self.acceptor in text
+        text = text.lower()
+        self.has_anchor = self.anchor.lower() in text
+        self.has_acceptor = self.acceptor.lower() in text
         self.url_status = status_code
         # print('Check', self.acceptor, status_code)
 
