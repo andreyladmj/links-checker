@@ -8,12 +8,13 @@ from openpyxl import load_workbook
 
 from utils.file_select import FileSelect
 from utils.parse_xlsx import ParseXLSX
+from utils.qlogger import QLogger
 from utils.utils import iterate_by_batch
 
 
 class CheckAcceptors(QWidget, FileSelect):
 
-    def __init__(self, parent):
+    def __init__(self, parent, number_of_threads):
         super().__init__()
         self.title = 'Acceptor Checker'
         self.left = 10
@@ -21,19 +22,18 @@ class CheckAcceptors(QWidget, FileSelect):
         self.width = 1024
         self.height = 840
         self.parent = parent
-        self.processes = cpu_count()
+        self.processes = number_of_threads
         self.processes_list = []
-        self.queue = Queue()
-        self.logs = ""
+
+        self.qlogs = QLogger(self)
+
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
-        # self.setFixedSize(self.width, self.height)
-        # self.setMaximumWidth(self.width)
 
-        self.horizontalGroupBox = QGroupBox("Grid")
+        self.horizontalGroupBox = QGroupBox("Checker")
 
         self.select_xlsx = QPushButton('Select XLSX')
         self.select_xlsx.clicked.connect(self.select_xlsx_dialog)
@@ -60,33 +60,14 @@ class CheckAcceptors(QWidget, FileSelect):
 
         actions_layout.addLayout(vbox_layuot, 1, 0, 1, 2)
 
-        cols = 3
-        rows = 4
-
-        self.qlabel_logs = QTextEdit(self.logs, self)
-        # self.qlabel_logs.scr
-        # self.YScrollBar = QScrollBar(Qt.Vertical, self)
-        # self.XScrollBar = QScrollBar(Qt.Horizontal, self)
-        # self.qlabel_logs.setVerticalScrollBar(self.YScrollBar)
-        # self.qlabel_logs.setHorizontalScrollBar(self.XScrollBar)
-
-        # self.qlabel_logs.setMaximumWidth(self.width)
-        self.qlabel_logs.setLineWrapMode(QTextEdit.NoWrap)
-        actions_layout.addWidget(self.qlabel_logs, 2,0, rows,cols)
-        actions_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-
         self.horizontalGroupBox.setLayout(actions_layout)
 
         windowLayout = QVBoxLayout()
         windowLayout.addWidget(self.horizontalGroupBox)
+        windowLayout.addWidget(self.qlogs)
         self.setLayout(windowLayout)
 
         self.show()
-
-    def log(self, string):
-        self.logs += string
-        self.logs += "\n"
-        self.qlabel_logs.setText(self.logs)
 
     def select_xlsx_dialog(self):
         file = self.openFileNameDialog()

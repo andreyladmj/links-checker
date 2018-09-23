@@ -16,10 +16,10 @@ class ParseXLSX(QtCore.QThread):
     def __init__(self, number, parent):
         super().__init__()
         self.number = number
-        self.qlabel = QLabel('Process: {}'.format(self.number), parent)
-        self.qbar = QProgressBar(parent)
-        self.qbar.setMaximum(100)
-        self.qbar.setMinimum(0)
+        #self.qlabel = QLabel('Process: {}'.format(self.number), parent)
+        #self.qbar = QProgressBar(parent)
+        #self.qbar.setMaximum(100)
+        #self.qbar.setMinimum(0)
         self.links = []
         self.processed = 0
         self.total = 0

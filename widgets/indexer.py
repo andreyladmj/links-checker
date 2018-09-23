@@ -19,7 +19,7 @@ from widgets.components.spam_link import SpamLink
 
 class Indexer(QWidget, FileSelect):
 
-    def __init__(self, parent):
+    def __init__(self, parent, number_of_threads):
         super().__init__()
         self.title = 'Indxer'
         self.left = 10
@@ -27,7 +27,7 @@ class Indexer(QWidget, FileSelect):
         self.width = 1024
         self.height = 840
         self.parent = parent
-        self.processes = cpu_count()
+        self.processes = number_of_threads
         self.processes_list = []
         self.files = []
         self.mode = 'indexer'
@@ -93,33 +93,17 @@ class Indexer(QWidget, FileSelect):
         self.upper_limit_checkbox = QCheckBox("Use upper limit", self)
         self.upper_limit_checkbox.stateChanged.connect(self.change_upper_limit_state)
 
-        self.settings_threads = QLineEdit()
-        self.settings_threads.setValidator(QIntValidator(0, 100000))
-        self.settings_threads.setText(str(self.processes))
-        self.settings_threads.setMaximumWidth(50)
 
         self.settings_upper_limit = QLineEdit()
         self.settings_upper_limit.setValidator(QIntValidator(0, 100000))
         self.settings_upper_limit.setMaximumWidth(50)
 
-        self.settings_threads_apply_button = QPushButton('Start Process')
-        self.settings_threads_apply_button.clicked.connect(self.settings_threads_apply)
-
-        hbox_layout = QHBoxLayout()
-        hbox_layout.addWidget(QLabel('Number of processes', self))
-        hbox_layout.addWidget(self.settings_threads)
-        hbox_layout.addWidget(self.settings_threads_apply_button)
 
         settingsGridLayout.addWidget(self.upper_limit_checkbox, 0, 0)
         settingsGridLayout.addWidget(self.settings_upper_limit, 0, 1)
-        settingsGridLayout.addLayout(hbox_layout, 1, 0)
         settingsGroupBox.setLayout(settingsGridLayout)
         return settingsGroupBox
 
-    def settings_threads_apply(self):
-        self.processes = int(self.settings_threads.text())
-        self.processes_list = []
-        self.processesGroupBox = self.getProcessesUI()
 
     def getActionsUI(self):
         horizontalGroupBox = QGroupBox("Actions")

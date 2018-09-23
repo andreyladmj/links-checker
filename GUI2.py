@@ -1,8 +1,10 @@
 import sys
 from time import strftime
+from os import cpu_count
 
+from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QProgressBar, QLabel, QHBoxLayout, QFileDialog, \
-    QVBoxLayout, QGroupBox, QGridLayout
+    QVBoxLayout, QGroupBox, QGridLayout, QLineEdit
 from PyQt5.QtCore import pyqtSlot
 
 from utils.file_select import FileSelect
@@ -20,43 +22,19 @@ class App(QWidget, FileSelect):
         self.top = 50
         self.width = 512
         self.height = 320
+        self.number_of_threads = cpu_count()
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
-        # self.setMaximumWidth(1024)
 
-        # self.button = QPushButton('Choose xlsx report', self)
-        # self.button.setToolTip('Parse xlsx file')
-        # self.button.move(200, 170)
-        # self.button.clicked.connect(self.on_click)
-        #
-        # self.progressLabel = QLabel('Progress:', self)
-        # self.progressBar = QProgressBar(self)
-        # self.progressBar.setMaximum(100)
-        # self.progressBar.setMinimum(0)
-        # self.hboxLayout = QHBoxLayout(self)
-        #
-        # self.hboxLayout.addWidget(self.progressLabel)
-        # self.hboxLayout.addWidget(self.progressBar)
-        # self.hboxLayout.addWidget(self.button)
-        #
-        # # Setting the hBoxLayout as the main layout
-        # self.setLayout(self.hboxLayout)
-        #
-        # self.show()
-        self.createGridLayout()
-
-        windowLayout = QVBoxLayout()
-        windowLayout.addWidget(self.horizontalGroupBox)
-        self.setLayout(windowLayout)
+        layout = self.createGridLayout()
+        self.setLayout(layout)
 
         self.show()
-        #self.setFixedWidth(1024)
 
     def createGridLayout(self):
-        self.horizontalGroupBox = QGroupBox("Grid")
         layout = QGridLayout()
         layout.setColumnStretch(1, 4)
         layout.setColumnStretch(2, 4)
@@ -73,21 +51,18 @@ class App(QWidget, FileSelect):
         layout.addWidget(self.check_acceptors,0,0)
         layout.addWidget(self.indexer,0,1)
         layout.addWidget(self.wp_comments_button,0,2)
-        layout.addWidget(QPushButton('4'),1,0)
-        layout.addWidget(QPushButton('5'),1,1)
-        layout.addWidget(QPushButton('6'),1,2)
-        layout.addWidget(QPushButton('7'),2,0)
-        layout.addWidget(QPushButton('8'),2,1)
-        layout.addWidget(QPushButton('9'),2,2)
 
-        self.horizontalGroupBox.setLayout(layout)
+        hbox_layout = QVBoxLayout()
+        hbox_layout.addWidget(self.getSettingsUI())
+        hbox_layout.addLayout(layout)
+        return hbox_layout
 
     def open_new_dialog(self):
-        self.check_acceptors = CheckAcceptors(self)
+        self.check_acceptors = CheckAcceptors(self, self.number_of_threads)
         self.check_acceptors.show()
 
     def open_indexer_window(self):
-        self.indexer_window = Indexer(self)
+        self.indexer_window = Indexer(self, self.number_of_threads)
         self.indexer_window.show()
 
     def open_wp_comments_window(self):
@@ -98,6 +73,30 @@ class App(QWidget, FileSelect):
     def on_click(self):
         self.openFileNameDialog()
 
+    def getSettingsUI(self):
+        settingsGroupBox = QGroupBox("Settings")
+        settingsGridLayout = QGridLayout()
+
+        self.settings_threads = QLineEdit()
+        self.settings_threads.setValidator(QIntValidator(0, 20))
+        self.settings_threads.setText(str(self.number_of_threads))
+        self.settings_threads.setMaximumWidth(50)
+
+        self.settings_threads_apply_button = QPushButton('Set Number of Processes')
+        self.settings_threads_apply_button.clicked.connect(self.settings_threads_apply)
+
+        hbox_layout = QHBoxLayout()
+        hbox_layout.addWidget(QLabel('Number of processes', self))
+        hbox_layout.addWidget(self.settings_threads)
+        hbox_layout.addWidget(self.settings_threads_apply_button)
+
+        settingsGridLayout.addLayout(hbox_layout, 1, 0)
+        settingsGroupBox.setLayout(settingsGridLayout)
+        settingsGroupBox.setMaximumHeight(50)
+        return settingsGroupBox
+
+    def settings_threads_apply(self):
+        self.number_of_threads = int(self.settings_threads.text())
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
