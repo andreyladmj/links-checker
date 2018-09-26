@@ -10,23 +10,14 @@ from utils.file_select import FileSelect
 from utils.parse_xlsx import ParseXLSX
 from utils.qlogger import QLogger
 from utils.utils import iterate_by_batch
+from widgets.lcwidget import LCWidget
 
 
-class CheckAcceptors(QWidget, FileSelect):
+class CheckAcceptors(LCWidget):
 
     def __init__(self, parent, number_of_threads):
-        super().__init__()
+        super().__init__(parent, number_of_threads)
         self.title = 'Acceptor Checker'
-        self.left = 10
-        self.top = 50
-        self.width = 1024
-        self.height = 840
-        self.parent = parent
-        self.processes = number_of_threads
-        self.processes_list = []
-
-        self.qlogs = QLogger(self)
-
         self.initUI()
 
     def initUI(self):
@@ -47,16 +38,7 @@ class CheckAcceptors(QWidget, FileSelect):
         actions_layout.addWidget(QPushButton('Export Logs'),0,1)
         actions_layout.addWidget(self.export_xlsx_button,0,2)
 
-        vbox_layuot = QVBoxLayout()
-
-        for i in range(self.processes):
-            hbox_layout = QHBoxLayout()
-            parser = ParseXLSX(number=i, parent=self)
-
-            hbox_layout.addWidget(parser.qlabel)
-            hbox_layout.addWidget(parser.qbar)
-            vbox_layuot.addLayout(hbox_layout)
-            self.processes_list.append(parser)
+        vbox_layuot = self.getProcessesUI(ParseXLSX)
 
         actions_layout.addLayout(vbox_layuot, 1, 0, 1, 2)
 
@@ -72,7 +54,7 @@ class CheckAcceptors(QWidget, FileSelect):
     def select_xlsx_dialog(self):
         file = self.openFileNameDialog()
         if file:
-            self.log("Selected file {}".format(file))
+            self.qlogs.log("Selected file {}".format(file))
             self.parse_xlsx_file(file)
 
     def parse_xlsx_file(self, file):
@@ -82,14 +64,16 @@ class CheckAcceptors(QWidget, FileSelect):
         links = list(ws.iter_rows())
 
         batch_size = len(links) // self.processes + 1
-        self.log('Total Links Count: {}, Batch Size: {}'.format(len(links), batch_size))
+        self.qlogs.log('Total Links Count: {}, Batch Size: {}'.format(len(links), batch_size))
 
         batches = iterate_by_batch(links, batch_size, None)
 
         for process, batch in zip(self.processes_list, batches):
             process.set_links(batch)
-            process.set_queue(self.queue)
             process.start()
+
+    def show_finished_program_info(self):
+        self.qlogs.log('Finished!')
 
     def export_xlsx(self):
         pass

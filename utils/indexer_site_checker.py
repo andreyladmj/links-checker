@@ -8,33 +8,17 @@ from urllib3 import HTTPConnectionPool
 
 from check_links import save_result_report, check_links_in_the_workbook
 from utils.link import Link
+from utils.proccess_bar_thread import ProccessBarThread
 from utils.utils import iterate_by_batch
 
 
-class IndexerSiteChecker(QtCore.QThread):
-    pbar_signal = QtCore.pyqtSignal(int)
-    plabel_signal = QtCore.pyqtSignal(str)
-
-
-    log_signal = QtCore.pyqtSignal(str)
-    response_signal = QtCore.pyqtSignal(object)
-    exception_signal = QtCore.pyqtSignal(object)
-    finish_signal = QtCore.pyqtSignal()
-
-
-    # percent_log_signal = QtCore.pyqtSignal(int, str)
-
+class IndexerSiteChecker(ProccessBarThread):
     def __init__(self, number, parent):
         super().__init__()
         self.number = number
-        # self.qlabel = QLabel('Process: {}'.format(self.number), parent)
-        # self.qbar = QProgressBar(parent)
-        # self.qbar.setMaximum(100)
-        # self.qbar.setMinimum(0)
         self.links = []
         self.processed = 0
         self.total = 0
-        # self.pbar_signal.connect(self.qbar.setValue)
         self.queue = []
         self.results = []
 
@@ -55,26 +39,16 @@ class IndexerSiteChecker(QtCore.QThread):
         self.total = sum([link.count for link in links if link])
         self.update_info()
 
-    def update_info(self):
-        # self.qlabel.setText('Worker: {} (Processed {} of {})'.format(self.number, self.processed, self.total))
-        self.pbar_signal.emit(self.processed / self.total * 100)
-        self.plabel_signal.emit('Worker: {} (Processed {} of {})'.format(self.number, self.processed, self.total))
-        # print(self.number, self.processed, self.total, int(self.processed / self.total * 100))
-        # self.qbar.setValue(int(self.processed / self.total * 100))
-        # self.log_signal.emit("Worker: {} - {}%, (Processed {} of {})".format(self.number, self.processed / self.total * 100, self.processed, self.total))
+    # def update_info(self):
+    #     # self.qlabel.setText('Worker: {} (Processed {} of {})'.format(self.number, self.processed, self.total))
+    #     self.pbar_signal.emit(self.processed / self.total * 100)
+    #     self.plabel_signal.emit('Worker: {} (Processed {} of {})'.format(self.number, self.processed, self.total))
+    #     # print(self.number, self.processed, self.total, int(self.processed / self.total * 100))
+    #     # self.qbar.setValue(int(self.processed / self.total * 100))
+    #     # self.log_signal.emit("Worker: {} - {}%, (Processed {} of {})".format(self.number, self.processed / self.total * 100, self.processed, self.total))
 
     def get_info(self):
         return "Worker: {} - {}%, (Processed {} of {})".format(self.number, self.processed / self.total * 100, self.processed, self.total)
-
-    def set_bar_updating_bar_func(self, bar_fn, label_fn):
-        self.pbar_signal.connect(bar_fn)
-        self.plabel_signal.connect(label_fn)
-
-    def finish(self):
-        # self.processed = self.total
-        self.update_info()
-        self.log_signal.emit("Worker: {} is Finished!".format(self.number))
-        self.finish_signal.emit()
 
     def run(self):
         can = True

@@ -6,28 +6,21 @@ from PyQt5.QtWidgets import QLabel, QProgressBar
 
 from check_links import save_result_report, check_links_in_the_workbook
 from utils.link import Link
+from utils.proccess_bar_thread import ProccessBarThread
 
 
-class ParseXLSX(QtCore.QThread):
-    pbar_signal = QtCore.pyqtSignal(int)
-    download_signal = QtCore.pyqtSignal(list)
-    log_signal = QtCore.pyqtSignal(str)
+class ParseXLSX(ProccessBarThread):
 
     def __init__(self, number, parent):
         super().__init__()
         self.number = number
-        #self.qlabel = QLabel('Process: {}'.format(self.number), parent)
-        #self.qbar = QProgressBar(parent)
-        #self.qbar.setMaximum(100)
-        #self.qbar.setMinimum(0)
         self.links = []
         self.processed = 0
         self.total = 0
-        self.pbar_signal.connect(self.qbar.setValue)
         self.queue = []
         self.results = []
 
-        self.log_signal.connect(parent.log)
+        self.finish_signal.connect(parent.finish)
 
     def set_links(self, links):
         self.pbar_signal.emit(0)
@@ -35,22 +28,13 @@ class ParseXLSX(QtCore.QThread):
         self.total = len(self.links)
         self.update_info()
 
-    def set_queue(self, queue):
-        self.queue = queue
-
-    def update_info(self):
-        self.qlabel.setText('Worker: {} (Processed {} of {})'.format(self.number, self.processed, self.total))
-        self.pbar_signal.emit(self.processed / self.total * 100)
-
-    def finish(self):
-        self.processed = self.total
-        self.update_info()
-
     def run(self):
         results = []
 
         for link in self.links:
-            if not link: continue
+            if not link:
+                self.processed += 1
+                continue
 
             acceptor = link[0].value
             anchor = link[1].value
@@ -81,5 +65,6 @@ class ParseXLSX(QtCore.QThread):
 
         return check_acceptor
 
-    def exception_handler(self):
-        pass
+    def exception_handler(self, request, exception):
+        self.processed += 1
+        self.exception_signal.emit({'site': request.url, 'exception': exception})

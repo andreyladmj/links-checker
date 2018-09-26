@@ -92,7 +92,7 @@ class App(QWidget, FileSelect):
 
         settingsGridLayout.addLayout(hbox_layout, 1, 0)
         settingsGroupBox.setLayout(settingsGridLayout)
-        settingsGroupBox.setMaximumHeight(50)
+        settingsGroupBox.setMaximumHeight(100)
         return settingsGroupBox
 
     def settings_threads_apply(self):
