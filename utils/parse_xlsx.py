@@ -19,6 +19,11 @@ class ParseXLSX(ProccessBarThread):
         self.total = 0
         self.queue = []
         self.results = []
+        self.is_started = False
+
+        self.processed_links = []
+        self.exceptions = []
+        self.redirects = []
 
         self.finish_signal.connect(parent.finish)
 
@@ -29,6 +34,7 @@ class ParseXLSX(ProccessBarThread):
         self.update_info()
 
     def run(self):
+        self.is_started = True
         results = []
 
         for link in self.links:
@@ -40,14 +46,16 @@ class ParseXLSX(ProccessBarThread):
             anchor = link[1].value
             donor = link[2].value
 
-            if not acceptor or not donor or 'http' not in acceptor or 'http' not in donor: continue
+            if not acceptor or not donor or 'http' not in acceptor or 'http' not in donor:
+                self.processed += 1
+                continue
 
             headers = {
                 'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36'}
             results.append(grequests.get(donor, headers=headers,
-                                         hooks={'response': self.check_acceptor_decorator(acceptor, anchor, donor)}))
+                                         hooks={'response': self.check_acceptor_decorator(acceptor, anchor, donor)}, timeout=10))
 
-        self.results = grequests.map(results, exception_handler=self.exception_handler, size=16, gtimeout=12)
+        self.results = grequests.map(results, exception_handler=self.exception_handler, size=16)
 
         self.finish()
 
@@ -57,7 +65,15 @@ class ParseXLSX(ProccessBarThread):
             link.check(response.text, response.status_code)
             response.link = link
 
-            self.log_signal.emit('Thread {}: checked {} in {} - {}'.format(self.number, acceptor, donor, link.has_acceptor))
+            if response.is_redirect:
+                self.redirects.append({'from': donor, 'to': response.headers.get('Location')})
+                return
+                self.total += 1
+
+            self.processed_links.append(link)
+
+            self.log_signal.emit(
+                'Thread {}: checked {} in {} - {}'.format(self.number, acceptor, donor, link.has_acceptor))
             self.processed += 1
             self.update_info()
 
@@ -67,4 +83,7 @@ class ParseXLSX(ProccessBarThread):
 
     def exception_handler(self, request, exception):
         self.processed += 1
-        self.exception_signal.emit({'site': request.url, 'exception': exception})
+        self.update_info()
+        # self.exception_signal.emit({'site': request.url, 'exception': exception})
+        self.exceptions.append({'site': request.url, 'exception': exception})
+        print('exception', exception)

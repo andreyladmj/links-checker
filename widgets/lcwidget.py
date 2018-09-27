@@ -1,5 +1,6 @@
 from time import time
 
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, \
     QVBoxLayout, QGroupBox, QGridLayout, QTextEdit, QLabel, QProgressBar, QCheckBox, QLineEdit
 
@@ -24,6 +25,20 @@ class LCWidget(QWidget, FileSelect):
         self.processes_list = []
         self.start_time = 0
         self.qlogs = QLogger(self)
+        self.time_execution_label = QLabel('Time Execution:', self)
+
+    def get_time_execution(self):
+        time_execution = QGroupBox("Info")
+        vbox_info_layout = QHBoxLayout()
+        vbox_info_layout.addWidget(self.time_execution_label)
+        time_execution.setLayout(vbox_info_layout)
+        return time_execution
+
+    def init_timer(self):
+        self._status_update_timer = QTimer(self)
+        self._status_update_timer.setSingleShot(False)
+        self._status_update_timer.timeout.connect(self._update_status)
+        self._status_update_timer.start(1000)
 
     def _update_status(self):
         if self.start_time:
@@ -67,14 +82,11 @@ class LCWidget(QWidget, FileSelect):
         return vbox_layuot
 
     def is_finished(self):
-        return self.finished == self.processes
+        finished = sum([process.isFinished() for process in self.processes_list])
+        print('is_finished', finished, sum([proc.is_started for proc in self.processes_list]))
+        return finished == sum([proc.is_started for proc in self.processes_list])
 
     def finish(self):
-        self.finished += 1
-
-        for process in self.processes_list:
-            print('Is process finished', process.number, process.isFinished())
-
         if self.is_finished():
             self.qlogs.log('Finished!')
             self.update_execution_time()

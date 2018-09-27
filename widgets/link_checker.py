@@ -1,14 +1,14 @@
 from multiprocessing import Queue
 from os import cpu_count
+from time import time
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QProgressBar, QLabel, QHBoxLayout, QFileDialog, \
     QVBoxLayout, QGroupBox, QGridLayout, QScrollBar, QTextEdit
 from openpyxl import load_workbook
 
-from utils.file_select import FileSelect
+from check_links import save_result_report
 from utils.parse_xlsx import ParseXLSX
-from utils.qlogger import QLogger
 from utils.utils import iterate_by_batch
 from widgets.lcwidget import LCWidget
 
@@ -18,11 +18,13 @@ class CheckAcceptors(LCWidget):
     def __init__(self, parent, number_of_threads):
         super().__init__(parent, number_of_threads)
         self.title = 'Acceptor Checker'
+        self.all_processed_links = []
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
+        self.init_timer()
 
         self.horizontalGroupBox = QGroupBox("Checker")
 
@@ -34,13 +36,14 @@ class CheckAcceptors(LCWidget):
 
         actions_layout = QGridLayout()
         actions_layout.setColumnStretch(1, 3)
-        actions_layout.addWidget(self.select_xlsx,0,0)
-        actions_layout.addWidget(QPushButton('Export Logs'),0,1)
+        actions_layout.addWidget(self.select_xlsx,0,1)
+        # actions_layout.addWidget(QPushButton('Export Logs'),0,1)
         actions_layout.addWidget(self.export_xlsx_button,0,2)
 
         vbox_layuot = self.getProcessesUI(ParseXLSX)
 
-        actions_layout.addLayout(vbox_layuot, 1, 0, 1, 2)
+        actions_layout.addWidget(self.get_time_execution(), 1, 0, 1, 3)
+        actions_layout.addLayout(vbox_layuot, 2, 0, 1, 3)
 
         self.horizontalGroupBox.setLayout(actions_layout)
 
@@ -58,6 +61,7 @@ class CheckAcceptors(LCWidget):
             self.parse_xlsx_file(file)
 
     def parse_xlsx_file(self, file):
+        self.start_time = time()
         wb = load_workbook(file)
         ws = wb.active
 
@@ -73,7 +77,31 @@ class CheckAcceptors(LCWidget):
             process.start()
 
     def show_finished_program_info(self):
-        self.qlogs.log('Finished!')
+        all_links = []
+        exceptions = []
+
+        for process in self.processes_list:
+            for link in process.processed_links:
+                all_links.append(link)
+
+            for exc in process.exceptions:
+                exceptions.append(exc)
+
+        self.qlogs.log('Processed: {} links'.format(len(all_links)))
+        self.qlogs.log("")
+        self.qlogs.log("Exceptions:")
+
+        for ex in exceptions:
+            self.qlogs.log("Site: {}, Exception: {}".format(ex['site'], ex['exception']))
+
+        self.all_processed_links = all_links
 
     def export_xlsx(self):
-        pass
+        if not len(self.all_processed_links):
+            return self.qlogs.log("There are no links to export")
+
+        file = self.saveFileDialog()
+        if file:
+            self.qlogs.log("Saving to {} file".format(file))
+            save_result_report(file, self.all_processed_links)
+            self.qlogs.log("Saved!")

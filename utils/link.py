@@ -8,8 +8,8 @@ from utils.sheet import ws_result
 
 class Link:
     def __init__(self, acceptor, anchor, donor):
-        self.acceptor = acceptor
-        self.anchor = anchor
+        self.acceptor = acceptor.strip()
+        self.anchor = anchor.strip()
         self.donor = donor
         self.has_anchor = False
         self.has_acceptor = False
@@ -85,7 +85,7 @@ class Link:
     def get_status_cell(self):
         size = 8
 
-        if self.url_status == 200:
+        if self.url_status < 400:
             cell = WriteOnlyCell(ws_result, value='OK')
             cell.font = Font(name=self.font, size=size, color='3c763d', bold=True)
             cell.comment = Comment(text="Good =)", author=self.author)
