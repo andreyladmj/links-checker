@@ -83,7 +83,6 @@ class LCWidget(QWidget, FileSelect):
 
     def is_finished(self):
         finished = sum([process.isFinished() for process in self.processes_list])
-        print('is_finished', finished, sum([proc.is_started for proc in self.processes_list]))
         return finished == sum([proc.is_started for proc in self.processes_list])
 
     def finish(self):

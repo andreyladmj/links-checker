@@ -21,6 +21,7 @@ class IndexerSiteChecker(ProccessBarThread):
         self.total = 0
         self.queue = []
         self.results = []
+        self.is_started = False
 
         self.black_list = []
 
@@ -51,6 +52,7 @@ class IndexerSiteChecker(ProccessBarThread):
         return "Worker: {} - {}%, (Processed {} of {})".format(self.number, self.processed / self.total * 100, self.processed, self.total)
 
     def run(self):
+        self.is_started = True
         can = True
         concurency = 20
         batch_size = concurency * 5
@@ -82,11 +84,9 @@ class IndexerSiteChecker(ProccessBarThread):
                     headers = {'referer': referer,
                                'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'}
                     results.append(grequests.get(site, headers=headers, hooks={'response': self.check_site_response_decorator(link)}, timeout=10))
-                    # results.append(link)
-                    # time.sleep(0.001)
 
                 self.results = grequests.map(results, exception_handler=self.exception_handler, size=concurency)
-                self.update_info()
+                # self.update_info()
 
             if not total_count:
                 can = False
@@ -97,17 +97,17 @@ class IndexerSiteChecker(ProccessBarThread):
 
     def check_site_response_decorator(self, spam_link):
         def check_site_response(response, *args, **kwargs):
+            spam_link.url = response.url
+            spam_link.is_redirect = response.is_redirect
+            spam_link.status_code = response.status_code
+            spam_link.redirect_to = response.headers.get('Location')
+
             if response.is_redirect:
                 self.total += 1
 
             self.processed += 1
             # self.update_info()
             return response
-
-            spam_link.url = response.url
-            spam_link.is_redirect = response.is_redirect
-            spam_link.status_code = response.status_code
-            spam_link.redirect_to = response.headers.get('Location')
 
             response.spam_link = spam_link
             #self.response_signal.emit(response)

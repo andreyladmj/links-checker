@@ -21,7 +21,7 @@ class App(QWidget, FileSelect):
         self.left = 10
         self.top = 50
         self.width = 512
-        self.height = 320
+        self.height = 240
         self.number_of_threads = cpu_count()
         self.initUI()
 
@@ -47,6 +47,7 @@ class App(QWidget, FileSelect):
 
         self.wp_comments_button = QPushButton('WP Comments', self)
         self.wp_comments_button.clicked.connect(self.open_wp_comments_window)
+        self.wp_comments_button.setDisabled(True)
 
         layout.addWidget(self.check_acceptors,0,0)
         layout.addWidget(self.indexer,0,1)

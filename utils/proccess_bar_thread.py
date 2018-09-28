@@ -15,7 +15,7 @@ class ProccessBarThread(QtCore.QThread):
 
     def finish(self):
         self.update_info()
-        self.log_signal.emit("Worker: {} is Finished!".format(self.number))
+        self.log_signal.emit("Worker: {} Finished!".format(self.number))
         self.finish_signal.emit()
 
     def set_bar_updating_bar_func(self, bar_fn, label_fn):

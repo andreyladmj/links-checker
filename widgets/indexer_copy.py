@@ -15,84 +15,77 @@ from utils.indexer_site_checker import IndexerSiteChecker
 from utils.qlogger import QLogger
 from utils.utils import iterate_by_batch, make_xlsx_file
 from widgets.components.spam_link import SpamLink
-from widgets.lcwidget import LCWidget
 
 
-class Indexer(LCWidget):
+class Indexer(QWidget, FileSelect):
 
     def __init__(self, parent, number_of_threads):
-        super().__init__(parent, number_of_threads)
+        super().__init__()
         self.title = 'Indxer'
+        self.left = 10
+        self.top = 50
+        self.width = 1024
+        self.height = 840
+        self.parent = parent
+        self.processes = number_of_threads
+        self.processes_list = []
         self.files = []
         self.mode = 'indexer'
+        self.finished = 0
+        self.start_time = 0
         self.use_upper_limit = False
+
+        self.qlogs = QLogger(self)
 
         self.logs = []
         self.sites_responses = []
         self.exceptions = []
 
-        self.update_thread_info_counter = 0
         self.initUI()
 
     def _update_status(self):
         if self.start_time:
             self.update_execution_time()
-            self.update_thread_info_counter += 1
 
-            if self.update_thread_info_counter > 10:
-                self.update_thread_info_counter = 0
-
-                for proc in self.processes_list:
-                    if proc.is_started:
-                        proc.update_info()
+    def update_execution_time(self):
+        diff = int(time() - self.start_time)
+        days = diff // 86400
+        hours = diff // 3600 % 24
+        minutes = diff // 60 % 60
+        seconds = diff % 60
+        self.time_execution_label.setText(
+            "Time Execution: {} days, {:02d}:{:02d}:{:02d}".format(days, hours, minutes, seconds))
 
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
-        self.init_timer()
 
         settingsGroupBox = self.getSettingsUI()
         horizontalGroupBox = self.getActionsUI()
         filterGroupBox = self.getFilterUI()
-        self.processesGroupBox = self.getProcessesUI(IndexerSiteChecker)
+        self.processesGroupBox = self.getProcessesUI()
+
+        self._status_update_timer = QTimer(self)
+        self._status_update_timer.setSingleShot(False)
+        self._status_update_timer.timeout.connect(self._update_status)
+        self._status_update_timer.start(1000)
+
+        time_execution = QGroupBox("Info")
+        vbox_info_layout = QHBoxLayout()
+        self.time_execution_label = QLabel('Time Execution:', self)
+        vbox_info_layout.addWidget(self.time_execution_label)
+        time_execution.setLayout(vbox_info_layout)
 
         windowLayout = QVBoxLayout()
         windowLayout.addWidget(settingsGroupBox)
         windowLayout.addWidget(horizontalGroupBox)
         windowLayout.addLayout(self.processesGroupBox)
-        windowLayout.addWidget(self.get_time_execution())
+        windowLayout.addWidget(time_execution)
         windowLayout.addWidget(filterGroupBox)
         windowLayout.addWidget(self.qlogs)
         self.setLayout(windowLayout)
 
         self.show()
-
-    def getProcessesUI(self, test=None):
-        vbox_layuot = QVBoxLayout()
-        self.bars = {}
-
-        for i in range(self.processes):
-            hbox_layout = QHBoxLayout()
-            parser = IndexerSiteChecker(number=i, parent=self)
-
-            bar = QProgressBar(self)
-            bar.setMaximum(100)
-            bar.setMinimum(0)
-
-            self.bars[i] = {
-                'label': QLabel('Process: {}'.format(i), self),
-                'bar': bar,
-            }
-
-            parser.set_bar_updating_bar_func(self.bars[i]['bar'].setValue, self.bars[i]['label'].setText)
-
-            hbox_layout.addWidget(self.bars[i]['label'])
-            hbox_layout.addWidget(self.bars[i]['bar'])
-
-            vbox_layuot.addLayout(hbox_layout)
-            self.processes_list.append(parser)
-
-        return vbox_layuot
 
     def getSettingsUI(self):
         settingsGroupBox = QGroupBox("Settings")
@@ -100,14 +93,17 @@ class Indexer(LCWidget):
         self.upper_limit_checkbox = QCheckBox("Use upper limit", self)
         self.upper_limit_checkbox.stateChanged.connect(self.change_upper_limit_state)
 
+
         self.settings_upper_limit = QLineEdit()
         self.settings_upper_limit.setValidator(QIntValidator(0, 100000))
         self.settings_upper_limit.setMaximumWidth(50)
+
 
         settingsGridLayout.addWidget(self.upper_limit_checkbox, 0, 0)
         settingsGridLayout.addWidget(self.settings_upper_limit, 0, 1)
         settingsGroupBox.setLayout(settingsGridLayout)
         return settingsGroupBox
+
 
     def getActionsUI(self):
         horizontalGroupBox = QGroupBox("Actions")
@@ -163,6 +159,33 @@ class Indexer(LCWidget):
         filterGroupBox.setLayout(actions_layout)
         return filterGroupBox
 
+    def getProcessesUI(self):
+        vbox_layuot = QVBoxLayout()
+        self.bars = {}
+
+        for i in range(self.processes):
+            hbox_layout = QHBoxLayout()
+            parser = IndexerSiteChecker(number=i, parent=self)
+
+            bar = QProgressBar(self)
+            bar.setMaximum(100)
+            bar.setMinimum(0)
+
+            self.bars[i] = {
+                'label': QLabel('Process: {}'.format(i), self),
+                'bar': bar,
+            }
+
+            parser.set_bar_updating_bar_func(self.bars[i]['bar'].setValue, self.bars[i]['label'].setText)
+
+            hbox_layout.addWidget(self.bars[i]['label'])
+            hbox_layout.addWidget(self.bars[i]['bar'])
+
+            vbox_layuot.addLayout(hbox_layout)
+            self.processes_list.append(parser)
+
+        return vbox_layuot
+
     def select_xlsx_dialog(self):
         files = self.openFileNamesDialog()
         if files:
@@ -183,18 +206,19 @@ class Indexer(LCWidget):
         self.qlogs.set_logs(redirected)
 
     def show_all_exceptions(self):
+        print('show_all_exceptions', len(self.exceptions))
         exceptions = ["{}: {}".format(exception['site'], exception['exception']) for exception in self.exceptions]
         self.qlogs.set_logs(exceptions)
 
     def parse_xlsx_files(self):
         self.mode = 'indexer'
+        self.start_time = time()
         links = []
 
         if not len(self.files):
             return self.qlogs.log('Please select file')
-
-        self.qlogs.log("Starting parse files...")
-        self.start_time = time()
+        else:
+            self.qlogs.log("Starting parse files...")
 
         for file in self.files:
             links += self.get_links(file)
@@ -216,13 +240,8 @@ class Indexer(LCWidget):
         with open(file, 'r') as file:
             for line in file.readlines():
                 site, referer, count = line.split(';')
-                site = site.rstrip()
-                referer = referer.rstrip()
                 count = int(count.rstrip())
                 original_count = int(count)
-
-                if self.use_upper_limit and self.settings_upper_limit.text():
-                    count = int(self.settings_upper_limit.text())
 
                 if for_checking:
                     count = 1
@@ -234,27 +253,22 @@ class Indexer(LCWidget):
 
     def export_xlsx_report(self):
         cnt = Counter()
+
         for proces in self.processes_list:
             for link in proces.links:
                 if link:
                     cnt[link.url] += link.get_requests_count()
 
-        file = self.saveFileDialog('report_statistic.xlsx')
-        if file:
-            self.qlogs.log("Saving to {} file".format(file))
-            make_xlsx_file(file, head=['Site', 'Count'], body=cnt.items())
-            self.qlogs.log("Saved!")
+        self.qlogs.log('Saved as report_statistic.xlsx')
+        make_xlsx_file('report_statistic.xlsx', head=['Site', 'Count'], body=cnt.items())
 
     def export_xlsx_exceptions_report(self):
         report = []
         for exception in self.exceptions:
             report.append([exception['site'], str(exception['exception'])])
 
-        file = self.saveFileDialog(name='report_statistic_exceptions.xlsx')
-        if file:
-            self.qlogs.log("Saving to {} file".format(file))
-            make_xlsx_file(file, head=['Site', 'Exception'], body=report)
-            self.qlogs.log("Saved!")
+        self.qlogs.log('Saved as report_statistic_exceptions.xlsx')
+        make_xlsx_file('report_statistic_exceptions.xlsx', head=['Site', 'Exception'], body=report)
 
     def export_xlsx_redirects_report(self):
         report = []
@@ -264,11 +278,8 @@ class Indexer(LCWidget):
                 if link and link.is_redirect:
                     report.append([link.url, link.redirect_to])
 
-        file = self.saveFileDialog(name='report_statistic_redirect.xlsx')
-        if file:
-            self.qlogs.log("Saving to {} file".format(file))
-            make_xlsx_file(file, head=['Site', 'Redirect To'], body=report)
-            self.qlogs.log("Saved!")
+        self.qlogs.log('Saved as report_statistic_redirect.xlsx')
+        make_xlsx_file('report_statistic_redirect.xlsx', head=['Site', 'Redirect To'], body=report)
 
     def select_files_for_indexer_fix(self):
         file = self.openFileNameDialog()
@@ -276,21 +287,37 @@ class Indexer(LCWidget):
             self.qlogs.log("Trying to fix selected file {}".format(file))
             self.fix_indexer_files(file)
 
+    def is_finished(self):
+        return self.finished == self.processes
+
+    def finish(self):
+        self.finished += 1
+
+        for process in self.processes_list:
+            print('Is process finished', process.number, process.isFinished())
+
+        if self.is_finished():
+            self.qlogs.log('Finished!')
+            self.update_execution_time()
+            self.start_time = 0
+            self.show_finished_program_info()
+
     def save_fixed_indexer_files(self):
         if self.mode != 'fix_file':
             return self.qlogs.log("Sorry, but seems you didn't fix any files")
 
-        filename = self.saveFileDialog('fixed_links.txt')
+        filename = self.saveFileDialog()
 
         if filename:
             saved_links = []
 
             with open(filename, 'w') as file:
-                for proces in self.processes_list:
-                    for spam_link in proces.links:
-                        if spam_link and not spam_link.is_redirect and hash(spam_link) not in saved_links:
-                            file.write("{};{};{}\n".format(spam_link.url, spam_link.referer, spam_link.original_count))
-                            saved_links.append(hash(spam_link))
+                for response in self.sites_responses:
+                    spam_link = response.spam_link
+
+                    if not spam_link.is_redirect and hash(spam_link) not in saved_links:
+                        file.write("{};{};{}\n".format(spam_link.url, spam_link.referer, spam_link.original_count))
+                        saved_links.append(hash(spam_link))
 
             self.qlogs.log("Saved {}".format(filename))
 
