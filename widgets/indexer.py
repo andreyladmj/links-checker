@@ -215,7 +215,17 @@ class Indexer(LCWidget):
         urls = []
         with open(file, 'r') as file:
             for line in file.readlines():
-                site, referer, count = line.split(';')
+
+                if not line.strip(): continue
+
+                try:
+                    site, referer, count = line.split(';')
+                except Exception as e:
+                    self.qlogs.log("\nParsing file error:")
+                    self.qlogs.log(str(e))
+                    self.qlogs.log("Line: {}\n".format(line))
+                    continue
+
                 site = site.rstrip()
                 referer = referer.rstrip()
                 count = int(count.rstrip())

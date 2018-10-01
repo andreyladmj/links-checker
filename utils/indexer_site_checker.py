@@ -85,7 +85,10 @@ class IndexerSiteChecker(ProccessBarThread):
                                'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'}
                     results.append(grequests.get(site, headers=headers, hooks={'response': self.check_site_response_decorator(link)}, timeout=10))
 
-                self.results = grequests.map(results, exception_handler=self.exception_handler, size=concurency)
+                try:
+                    self.results = grequests.map(results, exception_handler=self.exception_handler, size=concurency)
+                except Exception as e:
+                    print('Exception', str(e))
                 # self.update_info()
 
             if not total_count:
