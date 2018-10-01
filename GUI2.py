@@ -100,6 +100,8 @@ class App(QWidget, FileSelect):
         self.number_of_threads = int(self.settings_threads.text())
 
 if __name__ == '__main__':
+    print('Add export to txt file with unchecked sites')
+    print('Rename buttons')
     app = QApplication(sys.argv)
     ex = App()
     sys.exit(app.exec_())
