@@ -1,18 +1,12 @@
-from collections import Counter
-from datetime import datetime
 from math import ceil
-from os import cpu_count
 from random import shuffle
 from time import time
 
-from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, \
     QVBoxLayout, QGroupBox, QGridLayout, QTextEdit, QLabel, QProgressBar, QCheckBox, QLineEdit
 
-from utils.file_select import FileSelect
 from utils.indexer_site_checker import IndexerSiteChecker
-from utils.qlogger import QLogger
 from utils.utils import iterate_by_batch, make_xlsx_file
 from widgets.components.spam_link import SpamLink
 from widgets.lcwidget import LCWidget
@@ -112,10 +106,10 @@ class Indexer(LCWidget):
     def getActionsUI(self):
         horizontalGroupBox = QGroupBox("Actions")
 
-        self.select_xlsx_button = QPushButton('Select XLSX')
+        self.select_xlsx_button = QPushButton('Select TXT')
         self.select_xlsx_button.clicked.connect(self.select_xlsx_dialog)
 
-        self.start_process_button = QPushButton('Start Process')
+        self.start_process_button = QPushButton('Start Processing')
         self.start_process_button.clicked.connect(self.parse_xlsx_files)
 
         self.export_xlsx_report_button = QPushButton('Export XLSX Report')
@@ -132,6 +126,9 @@ class Indexer(LCWidget):
 
         self.save_fixed_indexer_files_button = QPushButton('Save Fixed Indexer Files', self)
         self.save_fixed_indexer_files_button.clicked.connect(self.save_fixed_indexer_files)
+
+        # self.save_uncheched_sites_button = QPushButton('Save Unchecked Sites', self)
+        # self.save_uncheched_sites_button.clicked.connect(self.save_uncheched_sites)
 
         actions_layout = QGridLayout()
         actions_layout.addWidget(self.select_xlsx_button, 0, 0)
@@ -183,7 +180,16 @@ class Indexer(LCWidget):
         self.qlogs.set_logs(redirected)
 
     def show_all_exceptions(self):
-        exceptions = ["{}: {}".format(exception['site'], exception['exception']) for exception in self.exceptions]
+        sites = {}
+
+        for exception in self.exceptions:
+            if exception['site'] not in sites.keys():
+                sites[exception['site']] = {'site': exception['site'], 'count': 0, 'exceptions': []}
+
+            sites[exception['site']]['count'] += 1
+            sites[exception['site']]['exceptions'].append(str(exception['exception']))
+
+        exceptions = ["{}: Count: {}, info: {}\n".format(sites[site]['site'], sites[site]['count'], ', '.join(sites[site]['exceptions'])) for site in sites]
         self.qlogs.set_logs(exceptions)
 
     def parse_xlsx_files(self):
@@ -243,16 +249,23 @@ class Indexer(LCWidget):
         return urls
 
     def export_xlsx_report(self):
-        cnt = Counter()
+        cnt = {}
         for proces in self.processes_list:
             for link in proces.links:
                 if link:
-                    cnt[link.url] += link.get_requests_count()
+                    h = hash(link.url+link.referer)
+
+                    if not h in cnt.keys():
+                        cnt[h] = {'site': link.url, 'refferer': link.referer, 'count': 0}
+
+                    cnt[h]['count'] += link.get_requests_count()
+
+        data = [[cnt[c]['site'], cnt[c]['refferer'], cnt[c]['count']] for c in cnt]
 
         file = self.saveFileDialog('report_statistic.xlsx')
         if file:
             self.qlogs.log("Saving to {} file".format(file))
-            make_xlsx_file(file, head=['Site', 'Count'], body=cnt.items())
+            make_xlsx_file(file, head=['Site', 'Refer', 'Count'], body=sorted(data, key=lambda x: x[2], reverse=True))
             self.qlogs.log("Saved!")
 
     def export_xlsx_exceptions_report(self):
@@ -291,6 +304,21 @@ class Indexer(LCWidget):
             return self.qlogs.log("Sorry, but seems you didn't fix any files")
 
         filename = self.saveFileDialog('fixed_links.txt')
+
+        if filename:
+            saved_links = []
+
+            with open(filename, 'w') as file:
+                for proces in self.processes_list:
+                    for spam_link in proces.links:
+                        if spam_link and not spam_link.is_redirect and hash(spam_link) not in saved_links:
+                            file.write("{};{};{}\n".format(spam_link.url, spam_link.referer, spam_link.original_count))
+                            saved_links.append(hash(spam_link))
+
+            self.qlogs.log("Saved {}".format(filename))
+
+    def save_uncheched_sites(self):
+        filename = self.saveFileDialog('unchecked_sites.txt')
 
         if filename:
             saved_links = []

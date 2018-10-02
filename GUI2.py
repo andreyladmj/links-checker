@@ -42,7 +42,7 @@ class App(QWidget, FileSelect):
         self.check_acceptors = QPushButton('Check Acceptors', self)
         self.check_acceptors.clicked.connect(self.open_new_dialog)
 
-        self.indexer = QPushButton('Run Indexer', self)
+        self.indexer = QPushButton('Statistics', self)
         self.indexer.clicked.connect(self.open_indexer_window)
 
         self.wp_comments_button = QPushButton('WP Comments', self)
@@ -101,7 +101,6 @@ class App(QWidget, FileSelect):
 
 if __name__ == '__main__':
     print('Add export to txt file with unchecked sites')
-    print('Rename buttons')
     app = QApplication(sys.argv)
     ex = App()
     sys.exit(app.exec_())
