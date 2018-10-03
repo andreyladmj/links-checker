@@ -55,8 +55,8 @@ class Comments():#ProccessBarThread
         # chrome_options.add_argument('--proxy-server=%s' % proxy)
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--start-maximized')
-        chrome_options.add_argument('--start-fullscreen')
+        # chrome_options.add_argument('--start-maximized')
+        # chrome_options.add_argument('--start-fullscreen')
         return webdriver.Chrome(
             # 'D:\projects\links-checker\chromedriver.exe',
             'chromedriver',
@@ -171,6 +171,6 @@ if __name__ == '__main__':
     Comment.set_comments(['I like it!'])
     Comment.set_emails(['serega@gmail.com'])
     Comment.set_usernames(['Matvey pupkin'])
-    Comment.post_comment('https://creativenovels.com/godly-student/chapter-158-how-did-it-become-like-this/')
-    # Comment.post_comment('http://qcvoices.qwriting.qc.cuny.edu/sant1n0/2018/04/22/what-i-make-of-the-student-government-controversy-part-1/')
+    # Comment.post_comment('https://creativenovels.com/godly-student/chapter-158-how-did-it-become-like-this/')
+    Comment.post_comment('http://qcvoices.qwriting.qc.cuny.edu/sant1n0/2018/04/22/what-i-make-of-the-student-government-controversy-part-1/')
     print(Comment.sites_with_posted_comments)
