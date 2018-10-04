@@ -1,3 +1,4 @@
+import pickle
 import time
 from itertools import zip_longest
 
@@ -76,3 +77,16 @@ def get_simple_page(url, callback):
     results = grequests.map([
         grequests.get(url, headers=headers, hooks={'response': callback}, timeout=10)
     ], exception_handler=lambda request, exception: print('Exception!', request, exception), size=16)
+
+
+def save_pickle(name, data):
+    with open(name, 'wb') as handle:
+        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+def load_pickle(name):
+    with open(name, 'rb') as handle:
+        return pickle.load(handle)
+
+def append_pickle(name, data):
+    data = data + load_pickle(name)
+    save_pickle(name, data)

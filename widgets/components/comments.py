@@ -7,13 +7,14 @@ from selenium.webdriver.common.proxy import *
 
 from utils.proccess_bar_thread import ProccessBarThread
 from utils.selenium_checker import SeleniumChecker
-from utils.utils import create_selenium_dict_for_form
+from utils.utils import create_selenium_dict_for_form, load_pickle, save_pickle
 
 
 class QComments(ProccessBarThread):
     def __init__(self, number, parent=None):
         super().__init__()
         self.number = number
+        self.tmp_file_name = "tmp/{}.pickl".format(number)
         self.links = []
         self.processed = 0
         self.total = 0
@@ -28,6 +29,7 @@ class QComments(ProccessBarThread):
         # self.log_signal.connect(parent.qlogs.log)
         # self.finish_signal.connect(parent.finish)
 
+        self.processed_donors = []
         self.sites_with_posted_comments = []
         self.sites_with_errors = []
         # self.browser = None
@@ -54,12 +56,20 @@ class QComments(ProccessBarThread):
     def set_usernames(self, usernames):
         self.usernames = usernames
 
-    def donors_loop123(self, donors):
-        for donor in donors:
-            try:
-                self.post_comment(donor)
-            except Exception as e:
-                self.save_error(donor, str(e))
+    def try_to_recover(self):
+        try:
+            data = load_pickle(self.tmp_file_name)
+
+            if data:
+                self.sites_with_posted_comments = data
+                for row in self.sites_with_posted_comments:
+                    next(self.acceptors)
+                    self.processed_donors.append(row['donor'])
+
+        except Exception as e:
+            pass
+
+        return False
 
     def donors_loop(self, donors):
         Comment = SeleniumChecker()
@@ -67,13 +77,15 @@ class QComments(ProccessBarThread):
         count = 0
 
         for donor in donors:
+            count += 1
+
+            if not donor: continue
+            if donor in self.processed_donors: continue
+
             try:
-                count += 1
                 Comment.get(donor)
-                print('Get {}, #{} of {}'.format(donor, count, total))
 
                 if not Comment.find_form():
-                    # print('Form not Found on {}'.format(donor))
                     self.save_error(donor, 'Form not Found')
 
                 else:
@@ -86,28 +98,19 @@ class QComments(ProccessBarThread):
                     posted_data = Comment.post_comment(**params)
                     screenshot = Comment.save_screenshot(donor)
 
+                    self.processed_donors.append(donor)
                     self.sites_with_posted_comments.append(dict(
                         donor=donor,
-                        params=params,
+                        acceptor=acceptor,
+                        comment=comment,
+                        author=author,
+                        email=email,
                         posted_data=posted_data,
                         screenshot=screenshot,
                     ))
-
-                    # print("Fields")
-                    # print(Comment.get_form_fields())
-                    # print('Data:')
-                    # print(data)
-                    # print("\n\n")
+                    save_pickle(self.tmp_file_name, self.sites_with_posted_comments)
             except Exception as e:
                 self.save_error(donor, str(e))
-
-    def save_processed_site(self, url, before_submit, after_submit, **kwargs):
-        dict_ = kwargs
-        dict_['url'] = url
-        dict_['before_submit'] = before_submit
-        dict_['after_submit'] = after_submit
-
-        self.sites_with_posted_comments.append(dict_)
 
     def save_error(self, site, error):
         print(site, error)
