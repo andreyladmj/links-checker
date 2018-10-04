@@ -12,10 +12,12 @@ from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, \
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
+from utils.cycled_iterator import CycledIterator
 from utils.file_select import FileSelect
 from utils.indexer_site_checker import IndexerSiteChecker
 from utils.qlogger import QLogger
-from utils.utils import iterate_by_batch, make_xlsx_file
+from utils.utils import iterate_by_batch, make_xlsx_file, read_file
+from widgets.components.comments import QComments
 
 '''
 Исходные данные:
@@ -59,6 +61,12 @@ class WPComments(QWidget, FileSelect):
         self.text_comments_file = 'wp/TextComment.txt'
         self.user_names_file = 'wp/UserName.txt'
 
+        self.acceptors = []
+        self.donors = []
+        self.mails = []
+        self.text_comments = []
+        self.user_names = []
+
         self.initUI()
 
     def initUI(self):
@@ -73,134 +81,40 @@ class WPComments(QWidget, FileSelect):
         actions_layout = QGridLayout()
         actions_layout.addWidget(self.post_comments_button, 0, 0)
         self.horizontalGroupBox.setLayout(actions_layout)
-
-        # vbox_layuot = QVBoxLayout()
-        # self.bars = {}
-        #
-        # for i in range(self.processes):
-        #     hbox_layout = QHBoxLayout()
-        #     parser = IndexerSiteChecker(number=i, parent=self)
-        #
-        #     bar = QProgressBar(self)
-        #     bar.setMaximum(100)
-        #     bar.setMinimum(0)
-        #
-        #     self.bars[i] = {
-        #         'label': QLabel('Process: {}'.format(i), self),
-        #         'bar': bar,
-        #     }
-        #
-        #     parser.set_bar_updating_bar_func(self.bars[i]['bar'].setValue, self.bars[i]['label'].setText)
-        #
-        #     hbox_layout.addWidget(self.bars[i]['label'])
-        #     hbox_layout.addWidget(self.bars[i]['bar'])
-        #
-        #     vbox_layuot.addLayout(hbox_layout)
-        #     self.processes_list.append(parser)
+        self.processesGroupBox = self.getProcessesUI(QComments)
 
         windowLayout = QVBoxLayout()
         windowLayout.addWidget(self.horizontalGroupBox)
+        windowLayout.addWidget(self.processesGroupBox)
         windowLayout.addWidget(self.qlogs)
         self.setLayout(windowLayout)
 
         self.show()
 
+    def start_comment(self):
+        self.qlogs.log("Starting parse files...")
+        self.start_time = time()
+
+        self.qlogs.log("Total links: {}".format(len(self.donors)))
+
+        acceptors = CycledIterator(self.acceptors)
+
+        batch_size = ceil(len(self.donors) / self.processes)
+        self.qlogs.log('Batch Size: {}'.format(batch_size))
+        batches = iterate_by_batch(self.donors, batch_size, None)
+
+        for process, batch in zip(self.processes_list, batches):
+            process.set_donors(batch)
+            process.set_acceptors(acceptors.get_batch(len(batch)))
+            process.set_emails(self.emails)
+            process.set_comments(self.comments)
+            process.set_usernames(self.usernames)
+            process.start()
+
     def set_params(self):
-        self.acceptors = self.read_file(self.acceptors_file)
-        self.donors = self.read_file(self.donors_file)
-        self.mails = self.read_file(self.mails_file)
-        self.text_comments = self.read_file(self.text_comments_file)
-        self.user_names = self.read_file(self.user_names_file)
+        self.acceptors = read_file(self.acceptors_file)
+        self.donors = read_file(self.donors_file)
+        self.mails = read_file(self.mails_file)
+        self.text_comments = read_file(self.text_comments_file)
+        self.user_names = read_file(self.user_names_file)
 
-    def read_file(self, fname):
-        with open(fname) as f:
-            return f.readlines()
-
-    def create_webdriver(self):
-        chrome_options = Options()
-        # chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        return webdriver.Chrome(
-            'chromedriver',
-            service_args=['--disable-cache'],
-            chrome_options=chrome_options)
-
-    def type_to_field_name(self, name, message):
-        comment = self.browser.find_element_by_name(name)
-        comment.clear()
-        comment.send_keys(message)
-
-    def post_comments(self):
-        self.browser = self.create_webdriver()
-        # url = self.donors[0]
-        # acceptor = random.choice(self.acceptors)
-        # mail = random.choice(self.mails)
-        # text_comment = random.choice(self.text_comments)
-        # user_name = random.choice(self.user_names)
-
-        total = len(self.donors)
-
-        for url in self.donors:
-            total -= 1
-            try:
-                self.browser.get(url)
-                form = self.get_comments_form()
-                names = self.get_input_names(form)
-                print(url, names)
-            except Exception as e:
-                print("URL: {} has some troubles! trace: {}. Left: {}".format(url, str(e), total))
-
-        return
-
-        for url in self.donors:
-            self.browser.get(url)
-
-            try:
-                el = self.browser.find_element_by_name('comment')
-                el = self.browser.find_element_by_name('author')
-                el = self.browser.find_element_by_name('email')
-                el = self.browser.find_element_by_name('url')
-                el = self.browser.find_element_by_name('submit')
-            except:
-                print("URL: {} has some troubles!".format(url))
-
-        # el = self.browser.find_element_by_name('comment')
-        # print(el)
-        # print(dir(el))
-        #
-        # print('IIIII')
-        # el = self.browser.find_element_by_name('commentjoawdhawd')
-        # print(el)
-        # print(dir(el))
-
-        # type_to_field_name("comment", "I like it !!")
-        # type_to_field_name("author", "Udel Baranov")
-        # type_to_field_name("email", "otjer.mamonov@gmail.com")
-        # type_to_field_name("url", "tri-dnya-v-zapoe.com")
-        # submit = browser.find_element_by_name('submit')
-
-    def get_comments_form(self):
-        forms = self.browser.find_elements_by_tag_name('form')
-
-        for form in forms:
-            inputs = form.find_elements_by_tag_name('input')
-            all_fields = []
-
-            for input in inputs:
-                if input.get_attribute('name') == 'q': break
-                all_fields.append(input.get_attribute('name'))
-
-            if 'email' in all_fields:
-                return form
-
-        return None
-
-    def get_input_names(self, form):
-        inputs = form.find_elements_by_tag_name('input')
-        names = []
-
-        for input in inputs:
-            names.append(input.get_attribute('name'))
-
-        return names

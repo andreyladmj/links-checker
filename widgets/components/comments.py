@@ -5,12 +5,14 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.proxy import *
 
+from utils.proccess_bar_thread import ProccessBarThread
 from utils.selenium_checker import SeleniumChecker
+from utils.utils import create_selenium_dict_for_form
 
 
-class Comments():#ProccessBarThread
+class QComments(ProccessBarThread):
     def __init__(self, number, parent=None):
-        #super().__init__()
+        super().__init__()
         self.number = number
         self.links = []
         self.processed = 0
@@ -31,10 +33,14 @@ class Comments():#ProccessBarThread
         # self.browser = None
         self.browser = self.create_webdriver()
 
+        self.donors = []
         self.acceptors = []
         self.emails = []
         self.comments = []
         self.usernames = []
+
+    def set_donors(self, donors):
+        self.donors = donors
 
     def set_acceptors(self, acceptors):
         self.acceptors = acceptors
@@ -48,23 +54,6 @@ class Comments():#ProccessBarThread
     def set_usernames(self, usernames):
         self.usernames = usernames
 
-    def create_webdriver(self):
-
-        proxy = "http://89.254.142.187:8080"
-
-        chrome_options = Options()
-        # chrome_options.add_argument('--headless')
-        # chrome_options.add_argument('--proxy-server=%s' % proxy)
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        # chrome_options.add_argument('--start-maximized')
-        # chrome_options.add_argument('--start-fullscreen')
-        return webdriver.Chrome(
-            # 'D:\projects\links-checker\chromedriver.exe',
-            'chromedriver',
-            service_args=['--disable-cache'],
-            chrome_options=chrome_options)
-
     def donors_loop123(self, donors):
         for donor in donors:
             try:
@@ -74,82 +63,43 @@ class Comments():#ProccessBarThread
 
     def donors_loop(self, donors):
         Comment = SeleniumChecker()
+        total = len(donors)
+        count = 0
 
         for donor in donors:
             try:
+                count += 1
                 Comment.get(donor)
-                print('Get {}, #{} of {}'.format(url, count, len(donors)))
+                print('Get {}, #{} of {}'.format(donor, count, total))
 
                 if not Comment.find_form():
-                    print('Form not Found on {}'.format(donor))
+                    # print('Form not Found on {}'.format(donor))
+                    self.save_error(donor, 'Form not Found')
 
                 else:
-                    comment = 'learners can find support with essays'
-                    author = 'Isabella Arnold'
-                    email = 'warrenjt1978@yahoo.com'
-                    acceptor = 'http://www.londonjobsfinder.com/author/audrey-j-hayter'
+                    comment = random.choice(self.comments)
+                    author = random.choice(self.usernames)
+                    email = random.choice(self.emails)
+                    acceptor = next(self.acceptors)
                     params = create_selenium_dict_for_form(acceptor=acceptor, comment=comment, author=author, email=email)
 
-                    data = Comment.post_comment(**params)
-                    Comment.save_screenshot(url)
+                    posted_data = Comment.post_comment(**params)
+                    screenshot = Comment.save_screenshot(donor)
 
-                    print("Fields")
-                    print(Comment.get_form_fields())
-                    print('Data:')
-                    print(data)
-                    print("\n\n")
+                    self.sites_with_posted_comments.append(dict(
+                        donor=donor,
+                        params=params,
+                        posted_data=posted_data,
+                        screenshot=screenshot,
+                    ))
+
+                    # print("Fields")
+                    # print(Comment.get_form_fields())
+                    # print('Data:')
+                    # print(data)
+                    # print("\n\n")
             except Exception as e:
-                print('Exception on {}, {}'.format(url, str(e)))
-                print("\n\n")
-
-    def post_comment(self, url):
-        self.browser.get(url)
-        form = self.find_comments_form()
-
-        if form:
-            filled_fileds = self.try_to_fill_all_known_fields(form)
-            before_submit = self.save_screenshot(url)
-            form.find_element_by_name('submit').click()
-            after_submit = self.save_screenshot('{}_after_submit'.format(url))
-            self.save_processed_site(url, before_submit, after_submit, **filled_fileds)
-        else:
-            self.save_error(url, "Can't find comments form")
-
-    def save_screenshot(self, url):
-        name = url.replace(':', '').replace('/', '_')
-        self.browser.save_screenshot("/home/andrei/Python/links-checker/tmp/{}.png".format(name))
-        return name
-
-    def try_to_fill_all_known_fields(self, form):
-        filled = dict()
-
-        comment = random.choice(self.comments)
-        username = random.choice(self.usernames)
-        email = random.choice(self.emails)
-        acceptor = random.choice(self.acceptors)
-
-        if self.try_to_fill_field('comment', comment, form=form):
-            filled['comment'] = comment
-
-        if self.try_to_fill_field('author', username, form=form):
-            filled['username'] = username
-
-        if self.try_to_fill_field('email', email, form=form):
-            filled['email'] = email
-
-        if self.try_to_fill_field('url', acceptor, form=form):
-            filled['acceptor'] = acceptor
-
-        return filled
-
-    def try_to_fill_field(self, name, message, form=None):
-        try:
-            self.type_to_field_name(name, message, form=form)
-            return True
-        except Exception:
-            pass
-
-        return False
+                self.save_error(donor, str(e))
 
     def save_processed_site(self, url, before_submit, after_submit, **kwargs):
         dict_ = kwargs
