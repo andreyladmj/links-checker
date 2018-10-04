@@ -15,7 +15,7 @@ class SeleniumChecker():
         proxy = "http://89.254.142.187:8080"
 
         chrome_options = Options()
-        # chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--headless')
         # chrome_options.add_argument('--proxy-server=%s' % proxy)
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
@@ -39,12 +39,19 @@ class SeleniumChecker():
 
         return False
 
+    def get_form_fields(self):
+        inputs = self.form.find_elements_by_tag_name('input')
+        return [input.get_attribute('name') for input in inputs]
+
     def post_comment(self, **data):
-        filled_fields = self.try_to_fill_all_known_fields(data)
-        before_submit = self.save_screenshot(url)
-        form.find_element_by_name('submit').click()
-        after_submit = self.save_screenshot('{}_after_submit'.format(url))
-        self.save_processed_site(url, before_submit, after_submit, **filled_fileds)
+        return self.try_to_fill_all_known_fields(data)
+        # before_submit = self.save_screenshot(url)
+
+        # after_submit = self.save_screenshot('{}_after_submit'.format(url))
+        # self.save_processed_site(url, before_submit, after_submit, **filled_fileds)
+
+    def submit(self):
+        self.form.find_element_by_name('submit').click()
 
     def save_screenshot(self, url):
         name = url.replace(':', '').replace('/', '_')
@@ -95,8 +102,10 @@ class SeleniumChecker():
             all_fields = []
 
             for input in inputs:
-                if input.get_attribute('name') == 'comment_post_ID':
-                    # seems it is WP comment form
+                if input.get_attribute('name') == 'comment_post_ID': # seems it is WP comment form
+                    return form
+
+                if input.get_attribute('name') == 'wpdiscuz_unique_id': # seems it is Woocomerce form
                     return form
 
                 if input.get_attribute('name') == 'q': break
@@ -106,15 +115,26 @@ class SeleniumChecker():
             if 'email' in all_fields:
                 return form
 
+            if 'wc_email' in all_fields:
+                return form
+
         return None
 
 
 if __name__ == '__main__':
-    Comment = Comments(1)
-    Comment.set_acceptors(['http://yandex.com'])
-    Comment.set_comments(['I like it!'])
-    Comment.set_emails(['serega@gmail.com'])
-    Comment.set_usernames(['Matvey pupkin'])
-    # Comment.post_comment('https://creativenovels.com/godly-student/chapter-158-how-did-it-become-like-this/')
-    Comment.post_comment('http://qcvoices.qwriting.qc.cuny.edu/sant1n0/2018/04/22/what-i-make-of-the-student-government-controversy-part-1/')
-    print(Comment.sites_with_posted_comments)
+    url = 'https://creativenovels.com/godly-student/chapter-158-how-did-it-become-like-this/'
+    Comment = SeleniumChecker()
+    Comment.get(url)
+
+    if not Comment.find_form():
+        print('Form not Found')
+        exit(0)
+
+    comment = 'learners can find support with essays'
+    author = 'Isabella Arnold'
+    email = 'warrenjt1978@yahoo.com'
+    acceptor = 'http://www.londonjobsfinder.com/author/audrey-j-hayter'
+
+    data = Comment.post_comment(comment=comment, author=author, email=email, url=acceptor)
+
+    print(data)

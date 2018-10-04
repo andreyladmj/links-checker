@@ -4,14 +4,18 @@
 
 import grequests
 
-site = 'http://astro.uson.mx'
+acceptor1 = 'http://www.joomlatune.com/forum/index.php/topic,195711.0.html'
+donor1 = 'http://pacificriminternational.com' # /webalizer/usage_201809.html
+user_agent1 = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
 
-referer = 'https://designshack.net/member/teresamcallistermcallister'
+acceptor2 = 'http://www.connectionnewspapers.com/photos/2018/sep/18/138642/?c=458360'
+donor2 = 'http://bank-index.dk' # /webalizer/usage_201809.html
+user_agent2 = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36'
 
 grequests_results = []
 
 c = 0
-total = 800
+total = 400
 def check_site_response_decorator(response, *args, **kwargs):
     global c
     c += 1
@@ -21,12 +25,12 @@ def exception_handler(request, exception):
     print(exception)
 
 
-headers = {'referer': referer,
-           'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'}
+headers = {'referer': acceptor2,
+           'User-Agent': user_agent2}
 
 if __name__ == '__main__':
     for i in range(total):
-        grequests_results.append(grequests.get(site, headers=headers, hooks={'response': check_site_response_decorator}, timeout=10))
+        grequests_results.append(grequests.get(donor2, headers=headers, hooks={'response': check_site_response_decorator}, timeout=10))
 
     try:
         results = grequests.map(grequests_results, exception_handler=exception_handler, size=16)

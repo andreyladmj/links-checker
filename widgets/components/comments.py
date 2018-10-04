@@ -5,6 +5,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.proxy import *
 
+from utils.selenium_checker import SeleniumChecker
+
 
 class Comments():#ProccessBarThread
     def __init__(self, number, parent=None):
@@ -63,12 +65,42 @@ class Comments():#ProccessBarThread
             service_args=['--disable-cache'],
             chrome_options=chrome_options)
 
-    def donors_loop(self, donors):
+    def donors_loop123(self, donors):
         for donor in donors:
             try:
                 self.post_comment(donor)
             except Exception as e:
                 self.save_error(donor, str(e))
+
+    def donors_loop(self, donors):
+        Comment = SeleniumChecker()
+
+        for donor in donors:
+            try:
+                Comment.get(donor)
+                print('Get {}, #{} of {}'.format(url, count, len(donors)))
+
+                if not Comment.find_form():
+                    print('Form not Found on {}'.format(donor))
+
+                else:
+                    comment = 'learners can find support with essays'
+                    author = 'Isabella Arnold'
+                    email = 'warrenjt1978@yahoo.com'
+                    acceptor = 'http://www.londonjobsfinder.com/author/audrey-j-hayter'
+                    params = create_selenium_dict_for_form(acceptor=acceptor, comment=comment, author=author, email=email)
+
+                    data = Comment.post_comment(**params)
+                    Comment.save_screenshot(url)
+
+                    print("Fields")
+                    print(Comment.get_form_fields())
+                    print('Data:')
+                    print(data)
+                    print("\n\n")
+            except Exception as e:
+                print('Exception on {}, {}'.format(url, str(e)))
+                print("\n\n")
 
     def post_comment(self, url):
         self.browser.get(url)
@@ -131,46 +163,3 @@ class Comments():#ProccessBarThread
         print(site, error)
         self.sites_with_errors.append({'site': site, 'error': error})
 
-    def type_to_field_name(self, name, message, form=None):
-        if form:
-            comment = form.find_element_by_name(name)
-        else:
-            comment = self.browser.find_element_by_name(name)
-
-        comment.clear()
-        comment.send_keys(message)
-
-    def find_comments_form(self):
-        forms = self.browser.find_elements_by_tag_name('form')
-
-        if not len(forms):
-            raise Exception("Can't find any forms, please check this site")
-
-        for form in forms:
-            inputs = form.find_elements_by_tag_name('input')
-            all_fields = []
-
-            for input in inputs:
-                if input.get_attribute('name') == 'comment_post_ID':
-                    # seems it is WP comment form
-                    return form
-
-                if input.get_attribute('name') == 'q': break
-
-                all_fields.append(input.get_attribute('name'))
-
-            if 'email' in all_fields:
-                return form
-
-        return None
-
-
-if __name__ == '__main__':
-    Comment = Comments(1)
-    Comment.set_acceptors(['http://yandex.com'])
-    Comment.set_comments(['I like it!'])
-    Comment.set_emails(['serega@gmail.com'])
-    Comment.set_usernames(['Matvey pupkin'])
-    # Comment.post_comment('https://creativenovels.com/godly-student/chapter-158-how-did-it-become-like-this/')
-    Comment.post_comment('http://qcvoices.qwriting.qc.cuny.edu/sant1n0/2018/04/22/what-i-make-of-the-student-government-controversy-part-1/')
-    print(Comment.sites_with_posted_comments)
