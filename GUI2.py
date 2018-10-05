@@ -47,7 +47,7 @@ class App(QWidget, FileSelect):
 
         self.wp_comments_button = QPushButton('WP Comments', self)
         self.wp_comments_button.clicked.connect(self.open_wp_comments_window)
-        self.wp_comments_button.setDisabled(True)
+        # self.wp_comments_button.setDisabled(True)
 
         layout.addWidget(self.check_acceptors,0,0)
         layout.addWidget(self.indexer,0,1)
@@ -67,7 +67,7 @@ class App(QWidget, FileSelect):
         self.indexer_window.show()
 
     def open_wp_comments_window(self):
-        self.wp_comments_window = WPComments(self)
+        self.wp_comments_window = WPComments(self, self.number_of_threads)
         self.wp_comments_window.show()
 
     @pyqtSlot()

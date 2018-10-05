@@ -24,7 +24,7 @@ def read_file_lines(file):
         return f.readlines()
 
 
-def make_xlsx_file(fileName, head=None, body=None):
+def make_xlsx_file(fileName, head=None, body=None, column_dimensions=None):
     def make_cell(value, size=9, bold=False):
         cell = WriteOnlyCell(ws, value=value)
         cell.font = Font(name='Verdana', size=size, bold=bold)
@@ -33,12 +33,17 @@ def make_xlsx_file(fileName, head=None, body=None):
     wb = Workbook(write_only=True)
     ws = wb.create_sheet()
 
-    ws.column_dimensions['A'].width = 40
-    ws.column_dimensions['B'].width = 20
-    ws.column_dimensions['C'].width = 40
-    ws.column_dimensions['D'].width = 15
-    ws.column_dimensions['E'].width = 15
-    ws.column_dimensions['F'].width = 15
+    if column_dimensions:
+        for k, v in column_dimensions.items():
+            for param, value in v.items():
+                setattr(ws.column_dimensions[k], param, value)
+    else:
+        ws.column_dimensions['A'].width = 40
+        ws.column_dimensions['B'].width = 20
+        ws.column_dimensions['C'].width = 40
+        ws.column_dimensions['D'].width = 15
+        ws.column_dimensions['E'].width = 15
+        ws.column_dimensions['F'].width = 15
 
     if head:
         head = [make_cell(title, bold=True) for title in head]
@@ -53,6 +58,11 @@ def make_xlsx_file(fileName, head=None, body=None):
 
 
 def create_selenium_dict_for_form(acceptor, comment, author, email):
+    acceptor = acceptor.strip()
+    comment = comment.strip()
+    author = author.strip()
+    email = email.strip()
+
     return {
         'comment': comment,
         'wc_comment': comment,
@@ -83,9 +93,11 @@ def save_pickle(name, data):
     with open(name, 'wb') as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+
 def load_pickle(name):
     with open(name, 'rb') as handle:
         return pickle.load(handle)
+
 
 def append_pickle(name, data):
     data = data + load_pickle(name)

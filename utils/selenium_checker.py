@@ -1,14 +1,21 @@
 import random
 
 # from utils.proccess_bar_thread import ProccessBarThread
+from telnetlib import EC
+
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.proxy import *
+from selenium.webdriver.support.wait import WebDriverWait
 
 
 class SeleniumChecker():
     def __init__(self):
         self.browser = self.create_webdriver()
+        # self.browser.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+        self.browser.set_page_load_timeout(60)
 
     def create_webdriver(self):
 
@@ -33,11 +40,30 @@ class SeleniumChecker():
 
     def find_form(self):
         self.form = self.find_comments_form()
+        # self.browser.implicitly_wait(4)
+
+        # delay = 3 # seconds
+        # try:
+        #     # myElem = WebDriverWait(self.browser, delay).until(EC.presence_of_element_located((By.ID, 'IdOfMyElement')))
+        #     myElem = WebDriverWait(self.browser, delay).until(EC.presence_of_element_located(self.form))
+        #     print("Page is ready!")
+        # except TimeoutException:
+        #     print("Loading took too much time!")
+
 
         if self.form:
             return True
 
         return False
+
+    def wait(self):
+        self.browser.implicitly_wait(3)
+
+    def unwait(self):
+        self.browser.implicitly_wait(0)
+
+    def check_text(self, text):
+        return self.browser.page_source.find(text)
 
     def get_form_fields(self):
         inputs = self.form.find_elements_by_tag_name('input')
@@ -45,13 +71,12 @@ class SeleniumChecker():
 
     def post_comment(self, **data):
         return self.try_to_fill_all_known_fields(data)
-        # before_submit = self.save_screenshot(url)
-
-        # after_submit = self.save_screenshot('{}_after_submit'.format(url))
-        # self.save_processed_site(url, before_submit, after_submit, **filled_fileds)
 
     def submit(self):
-        self.form.find_element_by_name('submit').click()
+        try:
+            self.form.find_element_by_name('submit').click()
+        except Exception as e:
+            self.form.find_element_by_xpath("//input[@type='submit']").click()
 
     def save_screenshot(self, url):
         name = url.replace(':', '').replace('/', '_')
@@ -122,7 +147,7 @@ class SeleniumChecker():
 
 
 if __name__ == '__main__':
-    url = 'https://creativenovels.com/godly-student/chapter-158-how-did-it-become-like-this/'
+    url = 'https://www.expertselfcare.com/esc-student-covered-by-independent/'
     Comment = SeleniumChecker()
     Comment.get(url)
 

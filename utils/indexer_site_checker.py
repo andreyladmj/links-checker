@@ -76,7 +76,7 @@ class IndexerSiteChecker(ProccessBarThread):
 
                     total_count += link.count
 
-                    if site in self.black_list:
+                    if site in self.black_list and self.black_list.count(site) > 5:
                         self.processed += 1
                         self.update_info()
                         continue
