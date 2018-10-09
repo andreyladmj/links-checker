@@ -7,6 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.proxy import *
 
+from utils.cycled_iterator import CycledIterator
 from utils.proccess_bar_thread import ProccessBarThread
 from utils.selenium_checker import SeleniumChecker
 from utils.utils import create_selenium_dict_for_form, load_pickle, save_pickle
@@ -47,7 +48,7 @@ class QComments(ProccessBarThread):
         self.donors = donors
 
     def set_acceptors(self, acceptors):
-        self.acceptors = iter(acceptors)
+        self.acceptors = CycledIterator(acceptors)
 
     def set_emails(self, emails):
         self.emails = emails
@@ -91,6 +92,7 @@ class QComments(ProccessBarThread):
             if donor in self.processed_donors: continue
 
             try:
+                tries = 1
                 print(getpid(), '{} of {}'.format(count, total), donor)
                 Comment.get(donor)
 
@@ -104,13 +106,45 @@ class QComments(ProccessBarThread):
 
                     posted_data, screenshot_before, screenshot_after = self.post(Comment, donor, acceptor, comment, author, email)
 
+                    #http://jkuat.ac.ke/campuses/nairobicbd/student-email-portal-e-learning/
+                    #https://brownsenglish.edu.au/blog/english-student-testimonial-kim/
+                    #https://georgelakoff.com/2017/07/28/time-to-solve-the-student-debt-crisis/
+
                     while Comment.check_text('You are being asked to login because') != -1:
+                        tries += 1
+                        if tries > 7: break
                         Comment.wait()
                         Comment.get(donor)
                         Comment.find_form()
                         comment = random.choice(self.comments)
                         author = random.choice(self.usernames)
                         email = random.choice(self.emails)
+                        posted_data, screenshot_before, screenshot_after = self.post(Comment, donor, acceptor, comment, author, email)
+                        Comment.unwait()
+
+                    while Comment.check_text('Duplicate comment detected') != -1:
+                        tries += 1
+                        if tries > 7: break
+                        Comment.wait()
+                        Comment.get(donor)
+                        Comment.find_form()
+                        comment = random.choice(self.comments)
+                        author = random.choice(self.usernames)
+                        email = random.choice(self.emails)
+                        acceptor = next(self.acceptors)
+                        posted_data, screenshot_before, screenshot_after = self.post(Comment, donor, acceptor, comment, author, email)
+                        Comment.unwait()
+
+                    while Comment.check_text('Forbidden. Sender blacklisted.') != -1:
+                        tries += 1
+                        if tries > 7: break
+                        Comment.wait()
+                        Comment.get(donor)
+                        Comment.find_form()
+                        comment = random.choice(self.comments)
+                        author = random.choice(self.usernames)
+                        email = random.choice(self.emails)
+                        acceptor = next(self.acceptors)
                         posted_data, screenshot_before, screenshot_after = self.post(Comment, donor, acceptor, comment, author, email)
                         Comment.unwait()
 
