@@ -106,6 +106,11 @@ class QComments(ProccessBarThread):
 
                     posted_data, screenshot_before, screenshot_after = self.post(Comment, donor, acceptor, comment, author, email)
 
+                    #login to google account, wp, facebook
+
+                    # press button in iframe
+                    # https://stackoverflow.com/questions/27793187/unable-to-click-on-a-button-inside-an-iframe
+
                     #http://jkuat.ac.ke/campuses/nairobicbd/student-email-portal-e-learning/
                     #https://brownsenglish.edu.au/blog/english-student-testimonial-kim/
                     #https://georgelakoff.com/2017/07/28/time-to-solve-the-student-debt-crisis/
