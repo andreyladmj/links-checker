@@ -21,7 +21,7 @@ def read_file(file):
 
 def read_file_lines(file):
     with open(file) as f:
-        return f.readlines()
+        return list(map(lambda x: x.strip(), f.readlines()))
 
 
 def make_xlsx_file(fileName, head=None, body=None, column_dimensions=None):
@@ -102,3 +102,7 @@ def load_pickle(name):
 def append_pickle(name, data):
     data = data + load_pickle(name)
     save_pickle(name, data)
+
+def get_domain(link):
+    n = link.find('/', 8)
+    return link[:n]
