@@ -19,19 +19,26 @@ if __name__ == '__main__':
     while True:
 
         print('UTC hour', datetime.utcnow(), datetime.utcnow().hour)
-        if (datetime.utcnow().hour >= 0 and datetime.utcnow().hour < 4) or datetime.utcnow().hour == 24:
+        if datetime.utcnow().hour >= 1 and datetime.utcnow().hour < 2:
             start_request_time = datetime.utcnow()
             session = requests.Session()
             session.auth = ("test", "Q8UtsemJHZEJxOnE")
             hostname = "https://place2paid-prediction.edusson-data-science.com"
-            response = session.get(hostname + '/api/v1/orders/1092872')
+
+            try:
+                response = session.get(hostname + '/api/v1/orders/1092872', timeout=3)
+                content = response.content
+                status_code = response.status_code
+            except Exception as e:
+                content = 'Request Timeout 3s'
+                status_code = 405
 
             s = 'Get: {}, Code: {}, Request Time: {}, Start Time: {}, End Time: {}, Response: {}'.format(1092872,
-                response.status_code,
+                status_code,
                 get_execution_time(start_request_time),
                 format_time(start_request_time),
                 format_time(datetime.utcnow()),
-                response.content)
+                content)
 
             print(s)
 
