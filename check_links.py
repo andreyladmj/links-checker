@@ -12,12 +12,12 @@ from utils.sheet import ws_result, wb_result
 from utils.utils import iterate_by_batch
 
 
-def save_result_report(fileName, links):
+def save_result_report(fileName, links, errors=None):
     ws_result.append([
         make_cell("Acceptor", bold=True),
-        make_cell("Anchor", bold=True),
+        # make_cell("Anchor", bold=True),
         make_cell("Donor", bold=True),
-        make_cell("Has Anchor", bold=True),
+        # make_cell("Has Anchor", bold=True),
         make_cell("Has Acceptor", bold=True),
         make_cell("Site Status", bold=True),
     ])
@@ -25,6 +25,15 @@ def save_result_report(fileName, links):
     for link in links:
         if link:
             ws_result.append(link.get_array_cells())
+
+    if errors:
+        ws_result.append([])
+        ws_result.append([
+            make_cell("Site", bold=True),
+            make_cell("Error", bold=True),
+        ])
+        for error in errors:
+            ws_result.append([error['site'], str(error['exception'])])
 
     backup_filename = 'sheets/{}'.format(time.strftime("Report-%Y-%m-%d %H-%M-%S.xlsx"))
     # wb_result.save(backup_filename)

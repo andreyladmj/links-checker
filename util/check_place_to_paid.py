@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 def get_execution_time(start_time):
-    return strfdelta(datetime.now(), start_time)
+    return strfdelta(datetime.utcnow(), start_time)
 
 def format_time(time):
     return time.strftime("%H:%M:%S.%f")

@@ -25,12 +25,21 @@ class Link:
     def check(self, text, status_code):
         text = text.lower()
         self.has_anchor = self.anchor.lower() in text
-        self.has_acceptor = self.acceptor.lower() in text
+        self.has_acceptor = self.check_acceptor_in_text(text)
         self.url_status = status_code
 
         if not self.has_acceptor:
             self.try_to_find_a_problem(text)
 
+
+    def check_acceptor_in_text(self, text):
+        if self.acceptor.lower().replace('https://', '://') in text:
+            return True
+
+        if self.acceptor.lower().replace('http://', '://') in text:
+            return True
+
+        return self.acceptor.lower() in text
 
     def get_array_cells(self):
         acceptor_cell = WriteOnlyCell(ws_result, value=self.acceptor)
@@ -49,9 +58,9 @@ class Link:
 
         return [
             acceptor_cell,
-            anchor_cell,
+            # anchor_cell,
             donor_cell,
-            self.get_anchor_cell(),
+            # self.get_anchor_cell(),
             self.get_donor_cell(),
             self.get_status_cell(),
         ]

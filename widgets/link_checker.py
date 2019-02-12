@@ -78,20 +78,20 @@ class CheckAcceptors(LCWidget):
 
     def show_finished_program_info(self):
         all_links = []
-        exceptions = []
+        self.exceptions = []
 
         for process in self.processes_list:
             for link in process.processed_links:
                 all_links.append(link)
 
             for exc in process.exceptions:
-                exceptions.append(exc)
+                self.exceptions.append(exc)
 
         self.qlogs.log('Processed: {} links'.format(len(all_links)))
         self.qlogs.log("")
         self.qlogs.log("Exceptions:")
 
-        for ex in exceptions:
+        for ex in self.exceptions:
             self.qlogs.log("Site: {}, Exception: {}".format(ex['site'], ex['exception']))
 
         self.all_processed_links = all_links
@@ -103,5 +103,5 @@ class CheckAcceptors(LCWidget):
         file = self.saveFileDialog()
         if file:
             self.qlogs.log("Saving to {} file".format(file))
-            save_result_report(file, self.all_processed_links)
+            save_result_report(file, self.all_processed_links, errors=self.exceptions)
             self.qlogs.log("Saved!")
